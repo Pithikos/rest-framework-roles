@@ -1,0 +1,3 @@
+djangorestframework
+cerberus
+pytest
