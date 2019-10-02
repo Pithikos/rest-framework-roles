@@ -32,14 +32,13 @@ def create_lookup():
     Output example:
         {
             'myapp.views.UserViewset': {
-                'general_checkers': {
-                    'create': [
+                'create': {
+                    'role_checkers': [
                         is_anon
                     ],
-                    'partial':
                 },
-                'instance_checkers': {
-                    '*': [
+                '*': {
+                    'role_object_checkers': [
                         is_owner
                     ]
                 },
@@ -57,19 +56,24 @@ def create_lookup():
 
         # Populate general and instance checkers
         for role, actions in permissions.items():
-            checker = roles[role]['role_checker']
+            checker = roles[role]
             for action, value in actions.items():
-                if roles[role].get('check_instance'):
-                    checker_type = 'instance_checkers'
+
+                extra = None
+                if ':' in action:
+                    action, extra = action.split(':')
+
+                if action not in lookup:
+                    lookup[view_path][action] = {
+                        'role_object_checkers': [],
+                        'role_checkers': [],
+                        'extra': extra,
+                    }
+
+                if hasattr(roles[role], 'has_object_role'):
+                    checker_type = 'role_object_checkers'
                 else:
-                    checker_type = 'general_checkers'
-
-                if checker_type not in lookup[view_path]:
-                    lookup[view_path][checker_type] = {}
-
-                try:
-                    lookup[view_path][checker_type][action].append(checker)
-                except KeyError:
-                    lookup[view_path][checker_type][action] = [checker]
+                    checker_type = 'role_checkers'
+                lookup[view_path][action][checker_type].append(checker)
 
     return lookup

@@ -22,30 +22,42 @@ def get_user_model():
     return USER_MODEL
 
 
-def is_owner(request, obj):
-    return request.user == obj.creator
+class Role():
+    def __init__(self):
+        if not (hasattr(self, 'has_role') ^ hasattr(self, 'has_object_role')):
+            raise Exception("You must implement either 'has_role' or 'has_object_role'")
 
 
-def is_user(request):
-    return isinstance(request.user, get_user_model())
+class OwnerRole(Role):
+    def has_object_role(self, request, obj):
+        return request.user == obj.creator
 
 
-def is_anon(request):
-    return request.user.is_anonymous
+class UserRole(Role):
+    def has_role(self, request):
+        return isinstance(request.user, get_user_model())
 
 
-def is_admin(request):
-    return request.user.is_superuser
+class AnonRole(Role):
+    def has_role(self, request):
+        return request.user.is_anonymous
 
 
-def is_staff(request):
-    return request.user.is_staff
+class AdminRole(Role):
+    def has_role(self, request):
+        return request.user.is_superuser
 
 
+class StaffRole(Role):
+    def has_role(self, request):
+        return request.user.is_staff or is_admin(request)
+
+
+# Roles must be classes implementing either has_role or has_object_role
 ROLES = {
-    'user':  {'role_checker': is_user},
-    'anon':  {'role_checker': is_anon},
-    'owner': {'role_checker': is_owner, 'check_instance': True},
-    'admin': {'role_checker': is_admin},
-    'staff': {'role_checker': is_staff},
+    'user': UserRole,
+    'anon': AnonRole,
+    'owner': OwnerRole,
+    'admin': AdminRole,
+    'staff': StaffRole,
 }
