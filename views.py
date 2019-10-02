@@ -1,3 +1,5 @@
+import inspect
+
 from django.conf import settings
 from rest_framework.views import APIView as OriginalAPIView
 
@@ -9,6 +11,19 @@ VIEW_PERMISSIONS = create_lookup()
 
 def view_path(view):
     return view.__module__ + '.' + view.__class__.__name__
+
+
+def get_checker(entity):
+    """ Returns the checking function """
+    if inspect.isclass(entity):
+        instance = entity()
+        if hasattr(instance, 'has_role'):
+            return instance.has_role
+        return instance.has_object_role
+    elif hasattr(entity, '__call__'):
+        return entity
+    else:
+        raise Exception(f"Expected a class or function but got '{entity}'")
 
 
 def view_method_wrapper(view, func):
