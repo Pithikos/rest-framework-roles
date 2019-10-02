@@ -5,7 +5,6 @@ from django.conf import settings
 
 USER_MODEL = None
 
-
 def load_user_model():
     pkgpath = '.'.join(settings.AUTH_USER_MODEL.split('.')[:-1])
     modelname = settings.AUTH_USER_MODEL.split('.')[-1]
@@ -22,42 +21,34 @@ def get_user_model():
     return USER_MODEL
 
 
-class Role():
-    def __init__(self):
-        if not (hasattr(self, 'has_role') ^ hasattr(self, 'has_object_role')):
-            raise Exception("You must implement either 'has_role' or 'has_object_role'")
-
-
-class OwnerRole(Role):
-    def has_object_role(self, request, obj):
+def is_creator(view, request):
+    obj = view.get_object()
+    if hasattr(obj, 'creator'):
         return request.user == obj.creator
+    return False
 
 
-class UserRole(Role):
-    def has_role(self, request):
-        return isinstance(request.user, get_user_model())
+def is_user(view, request):
+    return isinstance(request.user, get_user_model())
 
 
-class AnonRole(Role):
-    def has_role(self, request):
-        return request.user.is_anonymous
+def is_anon(view, request):
+    return request.user.is_anonymous
 
 
-class AdminRole(Role):
-    def has_role(self, request):
-        return request.user.is_superuser
+def is_admin(view, request):
+    return request.user.is_superuser
 
 
-class StaffRole(Role):
-    def has_role(self, request):
-        return request.user.is_staff or is_admin(request)
+def is_staff(view, request):
+    return request.user.is_staff or is_admin(request)
 
 
 # Roles must be classes implementing either has_role or has_object_role
 ROLES = {
-    'user': UserRole,
-    'anon': AnonRole,
-    'owner': OwnerRole,
-    'admin': AdminRole,
-    'staff': StaffRole,
+    'user': is_user,
+    'anon': is_anon,
+    'owner': is_creator,
+    'admin': is_admin,
+    'staff': is_staff,
 }
