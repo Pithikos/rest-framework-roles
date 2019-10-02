@@ -40,30 +40,29 @@ def test_transformation():
     is_self = lambda v, r: True
 
     roles = {
-        'anon': is_anon,
         'admin': is_admin,
         'user': is_user,
+        'anon': is_anon,
     }
 
     permissions = [{
       'view': 'authentication.views.UserViewSet',
       'permissions': {
-        'anon': {
-          'create': True
-        },
         'admin': {
-          'list': True,
+          'create': True,
           'retrieve': True,
-          'destroy': True,
           'update': True,
           'partial_update': True,
-          'me': True
+          'me': True,
         },
         'user': {
           'update': True,
           'partial_update': is_not_updating_permissions,
           'retrieve': is_self,
-          'me': True
+          'me': True,
+        },
+        'anon': {
+          'create': False,
         }
       }
     }]
@@ -71,33 +70,28 @@ def test_transformation():
     expected = {
       'authentication.views.UserViewSet': {
         'create': [
-            (is_anon, True)
-        ],
-        'list': [
-            (is_admin, True)
+            (True, is_admin),
+            (False, is_anon),
         ],
         'retrieve': [
-            (is_admin, True),
-            (is_user, is_self),
-        ],
-        'destroy': [
-            (is_admin, True)
+            (True, is_admin),
+            (is_self, is_user),
         ],
         'update': [
-            (is_user, True)
+            (True, is_admin),
+            (True, is_user),
         ],
         'partial_update': [
-            (is_admin, True),
-            (is_user, is_not_updating_permissions)
+            (True, is_admin),
+            (is_not_updating_permissions, is_user),
         ],
         'me': [
-            (is_admin, True),
-            (is_user, True),
+            (True, is_admin),
+            (True, is_user),
         ]
       }
     }
     outcome = create_lookup(roles, permissions)
-    import IPython; IPython.embed(using=False)
     assert outcome == expected
 
 

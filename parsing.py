@@ -25,29 +25,21 @@ def load_view_permissions():
     return view_permissions
 
 
-def create_lookup():
+def create_lookup(roles, view_permissions):
     """
     Transform all configuration into a lookup table to be used for permission checking
 
-    Output example:
+    Example:
         {
-            'myapp.views.UserViewset': {
-                'create': {
-                    'role_checkers': [
-                        is_anon
-                    ],
-                },
-                '*': {
-                    'role_object_checkers': [
-                        is_owner
-                    ]
-                },
+            'authentication.views.UserViewSet': {
+                'create': [
+                    (True, is_admin),
+                    (False, is_anon),
+                ]
             }
         }
     """
     lookup = {}
-    roles = load_roles()
-    view_permissions = load_view_permissions()
     for view_rule in view_permissions:
         # view_class = importlib.import_module(view_rule['view'])
         view_path = view_rule['view']
@@ -56,24 +48,19 @@ def create_lookup():
 
         # Populate general and instance checkers
         for role, actions in permissions.items():
-            checker = roles[role]
             for action, value in actions.items():
 
-                extra = None
-                if ':' in action:
-                    action, extra = action.split(':')
+                if action not in lookup[view_path]:
+                    lookup[view_path][action] = []
 
-                if action not in lookup:
-                    lookup[view_path][action] = {
-                        'role_object_checkers': [],
-                        'role_checkers': [],
-                        'extra': extra,
-                    }
-
-                if hasattr(roles[role], 'has_object_role'):
-                    checker_type = 'role_object_checkers'
-                else:
-                    checker_type = 'role_checkers'
-                lookup[view_path][action][checker_type].append(checker)
-
+                lookup[view_path][action].append((
+                    value,        # check if to be granted permission
+                    roles[role],  # role checker
+                ))
     return lookup
+
+
+def get_lookup():
+    roles = load_roles()
+    view_permissions = load_view_permissions()
+    return create_lookup(roles, view_permissions)
