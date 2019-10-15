@@ -1,8 +1,18 @@
 import importlib
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
-config = settings.REST_FRAMEWORK_ROLES
+from .patching import is_django_configured
+
+
+# Load settings for this module
+if is_django_configured():
+    if not hasattr(settings, 'REST_FRAMEWORK_ROLES'):
+        raise ImproperlyConfigured("Missing 'REST_FRAMEWORK_ROLES' in settings")
+    config = settings.REST_FRAMEWORK_ROLES
+else:
+    raise Exception(f"Must setup Django settings before loading '{__name__}'")
 
 
 def load_roles():
