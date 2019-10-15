@@ -1,9 +1,9 @@
-from unittest.mock import patch
+# from unittest.mock import patch
 
-import pytest
-from django.test.utils import override_settings
+# import pytest
+# from django.test.utils import override_settings
 
-from ..roles import *
+from ..roles import is_admin, is_user, is_anon
 from ..parsing import create_lookup
 
 # ROLES = {
@@ -29,10 +29,10 @@ from ..parsing import create_lookup
 #     }
 # ]
 
-@patch('rest_framework_roles.tests.settings.ROLES', [])
-@patch('rest_framework_roles.tests.settings.PERMISSIONS', [])
-def test_usage():
-    pass
+# @patch('rest_framework_roles.tests.settings.ROLES', [])
+# @patch('rest_framework_roles.tests.settings.PERMISSIONS', [])
+# def test_usage():
+#     pass
 
 
 def test_transformation():

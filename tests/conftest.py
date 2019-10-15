@@ -3,9 +3,18 @@ import django
 from django.conf import settings
 
 
+ROLES = {}
+VIEW_PERMISSIONS = []
+REST_FRAMEWORK_ROLES = {
+  'roles': 'rest_framework_roles.tests.conftest.ROLES',
+  'role_permissions': 'rest_framework_roles.tests.conftest.VIEW_PERMISSIONS',
+}
+
+
 def pytest_configure(config):
     settings.configure(
         DEBUG_PROPAGATE_EXCEPTIONS=True,
+        REST_FRAMEWORK_ROLES=REST_FRAMEWORK_ROLES,
         DATABASES={
             'default': {
                 'ENGINE': 'django.db.backends.sqlite3',
@@ -14,8 +23,6 @@ def pytest_configure(config):
         },
         SITE_ID=1,
         SECRET_KEY='not very secret in tests',
-        USE_I18N=True,
-        USE_L10N=True,
         STATIC_URL='/static/',
         ROOT_URLCONF='tests.urls',
         TEMPLATES=[
