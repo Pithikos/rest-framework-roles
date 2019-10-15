@@ -1,8 +1,13 @@
 import sys
 
-from django.core.exceptions import ImproperlyConfigured
+from django.conf import settings
+from django.utils.functional import empty
 
 from .roles import is_creator, is_user, is_anon, is_admin, is_staff
+
+
+def django_is_configured():
+    return settings._wrapped is not empty
 
 
 def _patch_rest_framework():
@@ -11,7 +16,5 @@ def _patch_rest_framework():
 
 
 # Ensure patching happens during the configuration of Django or after
-try:
+if django_is_configured():
     _patch_rest_framework()
-except ImproperlyConfigured:
-    pass
