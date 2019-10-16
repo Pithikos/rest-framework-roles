@@ -1,3 +1,6 @@
+from os.path import dirname, abspath
+import sys
+
 import django
 from django.conf import settings
 
@@ -54,3 +57,7 @@ def pytest_configure(config):
         ),
     )
     django.setup()
+
+    # Add project and test root to path
+    sys.path.insert(0, dirname(dirname(abspath(__file__))))
+    sys.path.insert(0, dirname(abspath(__file__)))
