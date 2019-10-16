@@ -44,7 +44,7 @@ def test_view_permissions_can_be_applied_at_settings():
 
 
 BAD_REQUEST = 400
-FOBIDDEN = 403
+FORBIDDEN = 403
 ALLOWED = 200
 
 
@@ -72,10 +72,16 @@ class TestUserAPI():
         }]
         # TODO: Actually load the above in our system
 
-    def only_admin_can_list_users(self, client, user, anon, admin):
+    def test_only_admin_can_list_users(self, client, user, admin):
+        client.force_login(admin)
+        request = client.get('/users/')
+        assert request.status_code == ALLOWED
         client.force_login(user)
         request = client.get('/users/')
-        assert request.status_code == FOBIDDEN
+        assert request.status_code == FORBIDDEN
+        # anon
+        request = client.get('/users/')
+        assert request.status_code == FORBIDDEN
 
 
 def test_view_redirectios_dont_omit_checks():
