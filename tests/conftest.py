@@ -26,7 +26,7 @@ def pytest_configure(config):
         SITE_ID=1,
         SECRET_KEY='not very secret in tests',
         STATIC_URL='/static/',
-        ROOT_URLCONF='tests.urls',
+        ROOT_URLCONF=None,  # Expected to be overriden by test cases
         TEMPLATES=[
             {
                 'BACKEND': 'django.template.backends.django.DjangoTemplates',
