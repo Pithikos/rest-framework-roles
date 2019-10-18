@@ -6,10 +6,19 @@ from django.core.exceptions import ImproperlyConfigured
 from .patching import is_django_configured
 
 
-# Load settings for this module
-if is_django_configured():
+def validate_settings():
     if not hasattr(settings, 'REST_FRAMEWORK_ROLES'):
         raise ImproperlyConfigured("Missing 'REST_FRAMEWORK_ROLES' in settings")
+    roles_config = settings.REST_FRAMEWORK_ROLES
+    required_keys = ['view_permissions']
+    for k in required_keys:
+        if k not in roles_config:
+            raise ImproperlyConfigured(f"'REST_FRAMEWORK_ROLES' is missing required settings '{k}'")
+
+
+# Load settings for this module
+if is_django_configured():
+    validate_settings()
     config = settings.REST_FRAMEWORK_ROLES
 else:
     raise Exception(f"Must setup Django settings before loading '{__name__}'")
@@ -26,8 +35,7 @@ def load_roles():
 
 
 def load_view_permissions():
-    """ Read VIEW_PERMISSIONS from settings """
-    assert 'view_permissions' in config, "Not set 'view_permissions'"
+    """ Read VIEW_PERMISSIONS from Django settings """
     pkgpath = '.'.join(config['view_permissions'].split('.')[:-1])
     dictkey = config['view_permissions'].split('.')[-1]
     pkg = importlib.import_module(pkgpath)

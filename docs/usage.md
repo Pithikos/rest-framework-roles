@@ -16,7 +16,7 @@ INSTALLED_APPDS = {
 
 REST_FRAMEWORK_ROLES = {
   'roles': 'fileshare.roles.ROLES',
-  'role_permissions': 'fileshare.permissions.VIEW_PERMISSIONS',
+  'view_permissions': 'fileshare.permissions.VIEW_PERMISSIONS',
 }
 ```
 
