@@ -1,6 +1,1 @@
-from .patching import try_patch
-
-from .roles import is_creator, is_user, is_anon, is_admin, is_staff
-
-
-try_patch()
+default_app_config = 'rest_framework_roles.apps.RestFrameworkRolesConfig'

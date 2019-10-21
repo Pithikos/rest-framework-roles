@@ -13,7 +13,7 @@ def is_rest_framework_loaded():
     return 'rest_framework' in sys.modules.keys()
 
 
-def try_patch():
+def patch():
     # Ensure patching happens during the configuration of Django or after
     if is_django_configured():
         from .views import PatchedAPIView
