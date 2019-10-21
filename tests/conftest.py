@@ -13,6 +13,10 @@ REST_FRAMEWORK_ROLES = {
 }
 
 
+urlpatterns = []  # Used only to avoid errors before we override ROOT_URLCONF in
+                  # our test cases
+
+
 def pytest_configure(config):
     settings.configure(
         DEBUG_PROPAGATE_EXCEPTIONS=True,
@@ -26,7 +30,7 @@ def pytest_configure(config):
         SITE_ID=1,
         SECRET_KEY='not very secret in tests',
         STATIC_URL='/static/',
-        ROOT_URLCONF=None,  # Expected to be overriden by test cases
+        ROOT_URLCONF=__name__,
         TEMPLATES=[
             {
                 'BACKEND': 'django.template.backends.django.DjangoTemplates',
