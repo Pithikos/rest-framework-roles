@@ -79,6 +79,17 @@ def is_method_view(callback):
     return False
 
 
+def get_view_class(callback):
+    """
+    Try to get the class from given callback
+    """
+    if hasattr(callback, 'view_class'):
+        return callback.view_class
+    mod = importlib.import_module(callback.__module__)
+    cls = getattr(mod, callback.__name__)
+    return cls
+
+
 def patch(urlconf=None):
     """
     Entrypoint for all patching (after configurations have loaded)

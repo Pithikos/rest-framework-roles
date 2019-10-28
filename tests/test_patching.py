@@ -9,6 +9,7 @@ from rest_framework.test import APIRequestFactory
 from .utils import UserSerializer, _func_name
 from .fixtures import admin, user, anon
 import patching
+from patching import is_method_view, get_view_class
 
 
 # ------------------------------------------------------------------------------
@@ -98,6 +99,15 @@ def test_is_method_view():
     # Viewsets behave a bit differently
     for pattern in viewset_based_patterns.values():
         assert patching.is_method_view(pattern.callback)
+
+
+def test_get_view_class():
+    assert get_view_class(DjangoView.as_view()) == DjangoView
+    assert get_view_class(RestAPIView.as_view()) == RestAPIView
+    assert get_view_class(rest_function_view).__qualname__ == 'WrappedAPIView'
+
+    assert get_view_class(RestViewSet.as_view({'get': 'list'})) == RestViewSet
+    assert get_view_class(RestViewSet.as_view({'get': 'custom_view'})) == RestViewSet
 
 
 # ------------------------------------------------------------------------------
