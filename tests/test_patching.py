@@ -84,6 +84,7 @@ viewset_based_patterns = {
     '/rest_class_viewset/custom_view': path('rest_class_viewset/custom_view', RestViewSet.as_view({'get': 'custom_view'})),
     # NOTE: `custom_action` path is autopopulated by REST Framework
 }
+# TODO: Test with router + action
 
 # ------------------------------------------------------------------------------
 
@@ -155,7 +156,6 @@ class TestPatchClassViews():
             ('/rest_function_view', 'rest_function_view'),
             ('/django_class_view', 'get'),
             ('/rest_class_view', 'get'),
-            # ('/rest_class_view/custom_action', 'get'),
                                                             ):
 
             match = self.resolver.resolve(url)
