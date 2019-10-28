@@ -64,7 +64,8 @@ class RestViewSet(drf.viewsets.ViewSet):
     def custom_view(self, request):
         return HttpResponse(_func_name())
 
-    @drf.decorators.action(detail=False, methods=['get'])
+    # TODO: This is not tested atm
+    @drf.decorators.action(detail=False, methods=['get'], url_name='custom_action', url_path='custom_action')
     def custom_action(self, request):
         return HttpResponse(_func_name())
 
@@ -84,7 +85,6 @@ viewset_based_patterns = {
     # NOTE: `custom_action` path is autopopulated by REST Framework
 }
 
-
 # ------------------------------------------------------------------------------
 
 
@@ -97,8 +97,7 @@ def test_is_method_view():
     # Viewsets behave a bit differently
     for pattern in viewset_based_patterns.values():
         assert patching.is_method_view(pattern.callback)
-    # TODO: Action not resolved for some reason..
-    # assert patching.is_method_view(viewset_based_patterns['/rest_class_viewset/custom_action'].callback)
+
 
 # ------------------------------------------------------------------------------
 
