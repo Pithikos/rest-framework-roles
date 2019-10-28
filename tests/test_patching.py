@@ -14,7 +14,7 @@ import patching
 # ------------------------------------------------------------------------------
 
 
-from rest_framework import routers, permissions, viewsets, views, decorators
+from rest_framework import routers, permissions, viewsets, views, decorators, generics
 import rest_framework as drf
 from django.views.generic import ListView
 import django
@@ -22,27 +22,49 @@ from django.contrib.auth.models import User
 from django.urls import path, include
 from django.http import HttpResponse
 
+
 def django_function_view(request):
     return HttpResponse(_func_name())
+
 
 @drf.decorators.api_view()
 def rest_function_view(request):
     # This behaves exactly the same as if it was a method of APIView
     return HttpResponse(_func_name())
 
-class DjangoView(django.views.generic.View):
+
+class DjangoView(django.views.generic.ListView):
+    model = User
+
+    def get(self, request):
+        return HttpResponse(_func_name())
+
     def not_a_view(self, *args, **kwargs):
         # Not a view since not the standard get, post, etc.
         return HttpResponse(_func_name())
 
-class RestAPIView(drf.views.APIView, drf.mixins.ListModelMixin):  # This is the mother class of all classes
+
+class RestAPIView(drf.views.APIView):  # This is the mother class of all classes
     serializer_class = UserSerializer
-    permission_classes = (drf.permissions.IsAdminUser,)
+    permission_classes = (drf.permissions.AllowAny,)
     queryset = User.objects.all()
 
     @drf.decorators.action(detail=False)
     def custom_view(self):
         return HttpResponse(_func_name())
+
+    def get(self, request):
+        return HttpResponse(_func_name())
+
+    def not_a_view(self, *args, **kwargs):
+        # Not a view since not marked with decorator
+        return HttpResponse(_func_name())
+
+
+class RestViewSet(drf.viewsets.ViewSet):
+    def list(self, request):
+        return HttpResponse(_func_name())
+
 
 
 urlpatterns = []
@@ -53,6 +75,7 @@ class_based_patterns = {
     '/rest_function_view': path('rest_function_view', rest_function_view),  # internally ends up being a method
     '/django_class_view': path('django_class_view', DjangoView.as_view()),
     '/rest_class_view': path('rest_class_view', RestAPIView.as_view()),
+    # '/rest_class_viewset': path('rest_class_viewset', RestViewSet.as_view({'get': 'list'})),
 }
 
 
@@ -100,7 +123,7 @@ class TestPatchClassViews():
         self.urlconf = importlib.import_module(__name__)
         self.resolver = get_resolver(self.urlconf)
 
-    def test_rest_function_views_not_patched_directly(self):
+    def test_rest_function_views_are_not_patched_directly(self):
         """
         For class-based views, the callback is always the dispatch() method. We
         instead patch the views of the class that will be called by dispatch().
@@ -112,34 +135,40 @@ class TestPatchClassViews():
         match = self.resolver.resolve('/django_class_view')
         assert match.func.__wrapped__.__name__ == 'dispatch'
 
-
     def test_method_views_patching(self, client, admin):
         """
         We expect the below order:
 
             dispatch -> get -> view wrapper -> view method
         """
-        match = self.resolver.resolve('/rest_function_view')
-        request = APIRequestFactory().get('/rest_function_view')
-        cls = match.func.view_class
-        inst = cls()
+        for url, view_name in (
+            ('/rest_function_view', 'rest_function_view'),
+            ('/django_class_view', 'get'),
+            ('/rest_class_view', 'get'),
+            # ('/rest_class_view/custom_view', 'get'),
+                                                            ):
 
-        calls = []
-        def mark_called_dispatch(*args):
-            calls.append('dispatch')
-        def mark_called_view_wrapper(*args):
-            calls.append('view_wrapper')
+            match = self.resolver.resolve(url)
+            request = APIRequestFactory().get(url)
+            cls = match.func.view_class
+            inst = cls()
 
-        # Keep track of order the functions are called
-        with patch.object(cls, 'dispatch', wraps=inst.dispatch) as mock_dispatch:
-            mock_dispatch.side_effect = mark_called_dispatch
-            with patch('patching.before_view') as mock_before_view:
-                mock_before_view.side_effect = mark_called_view_wrapper
-                # TODO: Test view was called after the view_wrapper
-                response = match.func(request)
-                assert response.status_code == 200
-                assert response.content.decode() == 'rest_function_view'
-                assert calls == ['dispatch', 'view_wrapper']
+            calls = []
+            def mark_called_dispatch(*args):
+                calls.append('dispatch')
+            def mark_called_view_wrapper(*args):
+                calls.append('view_wrapper')
+
+            # Keep track of order the functions are called
+            with patch.object(cls, 'dispatch', wraps=inst.dispatch) as mock_dispatch:
+                mock_dispatch.side_effect = mark_called_dispatch
+                with patch('patching.before_view') as mock_before_view:
+                    mock_before_view.side_effect = mark_called_view_wrapper
+                    # TODO: Test view was called after the view_wrapper
+                    response = match.func(request)
+                    assert response.status_code == 200
+                    assert response.content.decode() == view_name
+                    assert calls == ['dispatch', 'view_wrapper']
 
     # def test_DjangoListView(self):
     #     """
