@@ -44,9 +44,13 @@ class RestAPIView(drf.views.APIView, drf.mixins.ListModelMixin):  # This is the 
     def custom_view(self):
         return HttpResponse(_func_name())
 
-urlpatterns = [
-    path('django_function_view', django_function_view),
-    path('rest_function_view', rest_function_view),
+
+urlpatterns = []
+function_based_patterns = [
+    path('django_function_view', django_function_view)
+]
+class_based_patterns = [
+    path('rest_function_view', rest_function_view),  # internally ends up being a method
     path('DjangoView', DjangoView.as_view()),
     path('RestAPIView', RestAPIView.as_view()),
 ]
@@ -56,22 +60,21 @@ urlpatterns = [
 
 
 def test_is_method_view():
-    assert not patching.is_method_view(urlpatterns[0].callback)
-    assert patching.is_method_view(urlpatterns[1].callback)
-    assert patching.is_method_view(urlpatterns[2].callback)
-    assert patching.is_method_view(urlpatterns[3].callback)
+    for pattern in function_based_patterns:
+        assert not patching.is_method_view(pattern.callback)
+    for pattern in class_based_patterns:
+        assert patching.is_method_view(pattern.callback)
+
+
+# ------------------------------------------------------------------------------
 
 
 @pytest.mark.urls(__name__)
-class TestPatch():
-    """
-    Ensure views are patched correctly regardless if they are functions or classes
-
-    For classes we need to ensure that not the dispatch() method itself is patched
-    but rather the view methods individually
-    """
+class TestPatchFunctionViews():
 
     def setup(self):
+        global urlpatterns
+        urlpatterns = function_based_patterns
         patching.patch()  # Ensure patching occurs!
         self.urlconf = importlib.import_module(__name__)
         self.resolver = get_resolver(self.urlconf)
@@ -82,44 +85,36 @@ class TestPatch():
         match.func.__qualname__.startswith('function_view_wrapper')
         assert match.func.__module__ == 'patching'
 
+
+@pytest.mark.urls(__name__)
+class TestPatchClassViews():
+    """
+    REST functions behave excactly the same as REST method videos. Internally
+    they are attached to a WrappedAPI class.
+    """
+
+    def setup(self):
+        global urlpatterns
+        urlpatterns = class_based_patterns
+        patching.patch()  # Ensure patching occurs!
+        self.urlconf = importlib.import_module(__name__)
+        self.resolver = get_resolver(self.urlconf)
+
     def test_rest_function_views_not_patched_directly(self):
-        """
-        REST function view are internally converted to methods so should be
-        patched the same way as class-based views.
-        """
         match = self.resolver.resolve('/rest_function_view')
         # We expect the 'view' to still point to dispatch
         assert match.func.__wrapped__.__wrapped__.__name__ == 'dispatch'
 
     def test_method_views_patching(self, client, admin):
         """
-        Since class method views always point to dispatch, we need to call dispatch
-        and ensure that it was routed to the view wrapper instead to the view method.
-
-        Expected order of function chaining:
+        We expect the below order:
 
             dispatch -> get -> view wrapper -> view method
         """
-        # After dispatch() request should be routed to the view wrapper instead
-        # of directly calling the view method.
-
-        # def mocked_class_view_wrapper(view):
-        #     def wrapped():
-        #     return patching.class
-        # mocked_class_view_wrapper = MagicMock(return_value=)
-
-        # Ensure wrapper is called before view
-        # def mocked_before_view():
-        #     print('Before view')
-        # def mocked_view(request):
-        #     print('view')
-        #     return HttpResponse()
-
         match = self.resolver.resolve('/rest_function_view')
         request = APIRequestFactory().get('/rest_function_view')
         cls = match.func.view_class
         inst = cls()
-
 
         calls = []
         def mark_called_dispatch(*args):
@@ -133,7 +128,6 @@ class TestPatch():
             with patch('patching.before_view') as mock_before_view:
                 mock_before_view.side_effect = mark_called_view_wrapper
                 # TODO: Test view was called after the view_wrapper
-
                 response = match.func(request)
                 assert response.status_code == 200
                 assert response.content.decode() == 'rest_function_view'
