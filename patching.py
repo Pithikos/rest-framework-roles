@@ -68,12 +68,15 @@ def class_view_wrapper(view):
 def is_method_view(callback):
     """
     Check if callback of pattern is a method
-
-    E.g. is_method_view(pattern.callback)
-
-    Note; works only with pattern callback or if as_view() is called
     """
-    return hasattr(callback, 'view_class')
+    if hasattr(callback, 'view_class'):
+        return True
+    try:
+        # Heurestic; all class methods end up calling the dispatch method
+        return callback.__wrapped__.__wrapped__.__name__ == 'dispatch'
+    except AttributeError:
+        pass
+    return False
 
 
 def patch(urlconf=None):

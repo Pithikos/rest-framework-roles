@@ -49,10 +49,6 @@ class RestAPIView(drf.views.APIView):  # This is the mother class of all classes
     permission_classes = (drf.permissions.AllowAny,)
     queryset = User.objects.all()
 
-    @drf.decorators.action(detail=False)
-    def custom_view(self):
-        return HttpResponse(_func_name())
-
     def get(self, request):
         return HttpResponse(_func_name())
 
@@ -65,6 +61,12 @@ class RestViewSet(drf.viewsets.ViewSet):
     def list(self, request):
         return HttpResponse(_func_name())
 
+    def custom_view(self, request):
+        return HttpResponse(_func_name())
+
+    @drf.decorators.action(detail=False, methods=['get'])
+    def custom_action(self, request):
+        return HttpResponse(_func_name())
 
 
 urlpatterns = []
@@ -75,7 +77,11 @@ class_based_patterns = {
     '/rest_function_view': path('rest_function_view', rest_function_view),  # internally ends up being a method
     '/django_class_view': path('django_class_view', DjangoView.as_view()),
     '/rest_class_view': path('rest_class_view', RestAPIView.as_view()),
-    # '/rest_class_viewset': path('rest_class_viewset', RestViewSet.as_view({'get': 'list'})),
+}
+viewset_based_patterns = {
+    '/rest_class_viewset': path('rest_class_viewset', RestViewSet.as_view({'get': 'list'})),
+    '/rest_class_viewset/custom_view': path('rest_class_viewset/custom_view', RestViewSet.as_view({'get': 'custom_view'})),
+    # NOTE: `custom_action` path is autopopulated by REST Framework
 }
 
 
@@ -88,6 +94,11 @@ def test_is_method_view():
     for pattern in class_based_patterns.values():
         assert patching.is_method_view(pattern.callback)
 
+    # Viewsets behave a bit differently
+    for pattern in viewset_based_patterns.values():
+        assert patching.is_method_view(pattern.callback)
+    # TODO: Action not resolved for some reason..
+    # assert patching.is_method_view(viewset_based_patterns['/rest_class_viewset/custom_action'].callback)
 
 # ------------------------------------------------------------------------------
 
@@ -145,7 +156,7 @@ class TestPatchClassViews():
             ('/rest_function_view', 'rest_function_view'),
             ('/django_class_view', 'get'),
             ('/rest_class_view', 'get'),
-            # ('/rest_class_view/custom_view', 'get'),
+            # ('/rest_class_view/custom_action', 'get'),
                                                             ):
 
             match = self.resolver.resolve(url)
