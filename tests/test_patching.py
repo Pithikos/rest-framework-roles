@@ -51,8 +51,8 @@ function_based_patterns = {
 }
 class_based_patterns = {
     '/rest_function_view': path('rest_function_view', rest_function_view),  # internally ends up being a method
-    '/DjangoView': path('DjangoView', DjangoView.as_view()),
-    '/RestAPIView': path('RestAPIView', RestAPIView.as_view()),
+    '/django_class_view': path('django_class_view', DjangoView.as_view()),
+    '/rest_class_view': path('rest_class_view', RestAPIView.as_view()),
 }
 
 
@@ -101,9 +101,17 @@ class TestPatchClassViews():
         self.resolver = get_resolver(self.urlconf)
 
     def test_rest_function_views_not_patched_directly(self):
+        """
+        For class-based views, the callback is always the dispatch() method. We
+        instead patch the views of the class that will be called by dispatch().
+        """
         match = self.resolver.resolve('/rest_function_view')
-        # We expect the 'view' to still point to dispatch
         assert match.func.__wrapped__.__wrapped__.__name__ == 'dispatch'
+        match = self.resolver.resolve('/rest_class_view')
+        assert match.func.__wrapped__.__wrapped__.__name__ == 'dispatch'
+        match = self.resolver.resolve('/django_class_view')
+        assert match.func.__wrapped__.__name__ == 'dispatch'
+
 
     def test_method_views_patching(self, client, admin):
         """
