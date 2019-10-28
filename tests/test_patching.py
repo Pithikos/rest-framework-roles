@@ -46,23 +46,23 @@ class RestAPIView(drf.views.APIView, drf.mixins.ListModelMixin):  # This is the 
 
 
 urlpatterns = []
-function_based_patterns = [
-    path('django_function_view', django_function_view)
-]
-class_based_patterns = [
-    path('rest_function_view', rest_function_view),  # internally ends up being a method
-    path('DjangoView', DjangoView.as_view()),
-    path('RestAPIView', RestAPIView.as_view()),
-]
+function_based_patterns = {
+    '/django_function_view': path('django_function_view', django_function_view),
+}
+class_based_patterns = {
+    '/rest_function_view': path('rest_function_view', rest_function_view),  # internally ends up being a method
+    '/DjangoView': path('DjangoView', DjangoView.as_view()),
+    '/RestAPIView': path('RestAPIView', RestAPIView.as_view()),
+}
 
 
 # ------------------------------------------------------------------------------
 
 
 def test_is_method_view():
-    for pattern in function_based_patterns:
+    for pattern in function_based_patterns.values():
         assert not patching.is_method_view(pattern.callback)
-    for pattern in class_based_patterns:
+    for pattern in class_based_patterns.values():
         assert patching.is_method_view(pattern.callback)
 
 
@@ -74,7 +74,7 @@ class TestPatchFunctionViews():
 
     def setup(self):
         global urlpatterns
-        urlpatterns = function_based_patterns
+        urlpatterns = function_based_patterns.values()
         patching.patch()  # Ensure patching occurs!
         self.urlconf = importlib.import_module(__name__)
         self.resolver = get_resolver(self.urlconf)
@@ -95,7 +95,7 @@ class TestPatchClassViews():
 
     def setup(self):
         global urlpatterns
-        urlpatterns = class_based_patterns
+        urlpatterns = class_based_patterns.values()
         patching.patch()  # Ensure patching occurs!
         self.urlconf = importlib.import_module(__name__)
         self.resolver = get_resolver(self.urlconf)
