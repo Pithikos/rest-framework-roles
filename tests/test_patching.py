@@ -156,7 +156,7 @@ class TestPatchClassViews():
             ('/rest_function_view', 'rest_function_view'),
             ('/django_class_view', 'get'),
             ('/rest_class_view', 'get'),
-                                                            ):
+            ):
 
             match = self.resolver.resolve(url)
             request = APIRequestFactory().get(url)
@@ -179,35 +179,6 @@ class TestPatchClassViews():
                     assert response.status_code == 200
                     assert response.content.decode() == view_name
                     assert calls == ['dispatch', 'view_wrapper']
-
-    # def test_DjangoListView(self):
-    #     """
-    #     Classes are a bit special since the view wrappers need to be applied on
-    #     every view, and not the class callable with essentially is the dispatch()
-    #     method. Aka patching must occur for each view
-    #     """
-    #     # Without patching
-    #     match = self.resolver.resolve('/DjangoListView')
-    #
-    # # def test_RestAPIView(self):
-    # #     match = self.resolver.resolve('/RestAPIView')
-    # #     # Nothing before the dispatcher should be patched
-    # #     assert match.func.__module__ != 'patching'
-    # #     assert match.func.__name__ == 'RestAPIView'
-    # #     assert match.func.__wrapped__.__wrapped__.__name__ == 'dispatch'
-    # #     # All method views should be patched
-    # #     # TODO: Ensure patching occurs on the vies..
-    # #     """
-    # #     Patching class methods strategy
-    # #         1. We know which classes to patch.
-    # #         2. Patch all methods of classes (except known parent methods which are
-    # #            definetely not views) with a view-checker decorator.
-    # #            method. It should call before_view in that case.
-    # #         3. The decorator should check if the caller function is the dispatch. If
-    # #            it is, then this should be a view and we therefore call before_view(view, ..)
-    # #     """
-    #     # assert
-    #     # import IPython; IPython.embed(using=False)
 
 
 def test_user_is_populated_inside_wrapper():
