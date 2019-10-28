@@ -117,28 +117,16 @@ def patch(urlconf=None):
 
     # Path class method
     for pattern in class_patterns:
-        cls = pattern.callback.view_class  # populated after as_view()
 
         # Get the Django 'client' methods - essentially the view methods
         # For a simple rest_function_view this would be 'get' and 'options'
+        cls = get_view_class(pattern.callback)
         methods = set(dir(cls)) & DJANGO_CLASS_VIEWS
 
         # Actual patching of method
         for method_name in methods:
             original_method = getattr(cls, method_name)
             setattr(cls, method_name, class_view_wrapper(original_method))
-
-
-def get_active_views():
-    views = []
-    for view in get_resolver().reverse_dict.keys():
-        if hasattr(view, '__call__'):
-            views.append(view)
-        elif type(view) is str:
-            views.append(resolve(view))
-        else:
-            raise Exception('View must be callable or string')
-    return views
 
 
 def iter_urlpatterns(urlpatterns):
