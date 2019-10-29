@@ -1,6 +1,7 @@
 import inspect
 
 from django.contrib.auth.models import User
+from django.http import HttpResponse
 from rest_framework import serializers, permissions, viewsets
 from rest_framework.test import APIClient
 _client = APIClient()
@@ -10,6 +11,10 @@ def _func_name():
     """ Place inside a function to get the function's name """
     stack = inspect.stack()
     return stack[1][3]
+
+
+def dummy_view(request):
+    return HttpResponse()
 
 
 def get_response(user, get=None, post=None):

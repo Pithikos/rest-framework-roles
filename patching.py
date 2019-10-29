@@ -32,12 +32,9 @@ def is_rest_framework_loaded():
 
 def check_permissions(request, view, *args, **kwargs):
     """
-    Hook called just before every view
+    Hook called at the right place to check role permissions
     """
-    print(f'BEFORE VIEW.. : {request.user}')
-    # import IPython; IPython.embed(using=False)
-    # dispatchview.__wrapped__.__wrapped__
-    # original_func = view.__wra
+    print(f'Check permissions for {request.user}')
 
 
 # ------------------------------ Wrappers --------------------------------------
@@ -63,13 +60,14 @@ def class_view_wrapper(view):
     return wrapped
 
 
-def check_permissions_wrapper(view):
+def check_permissions_wrapper(original_check_permissions):
     """ Wraps Django REST framework check_permissions method """
-    def wrapped(self, request, *args, **kwargs):
+    def wrapped(self, request):
         print('INSIDE check_permissions_wrapper.wrapped()..')
+        # o = original_check_permissions
         # import IPython; IPython.embed(using=False)
-        check_permissions(request, self, *args, **kwargs)  # Note we pass the class as view instead of function
-        return view(self, request, *args, **kwargs)
+        check_permissions(request, self)  # Note we pass the class as view instead of function
+        return original_check_permissions(self, request)
     return wrapped
 
 
