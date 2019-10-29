@@ -1,7 +1,9 @@
 import importlib
+from unittest.mock import patch
 
 import pytest
 from django.urls import get_resolver
+from django.test import RequestFactory
 
 from .urls import *
 import patching
@@ -29,6 +31,16 @@ class TestPatchFunctionViews():
         match.func.__qualname__.startswith('function_view_wrapper')
         assert match.func.__module__ == 'patching'
 
+    def test_check_permissions_is_called(self):
+        url = '/django_function_view'
+        match = self.resolver.resolve(url)
+        request = RequestFactory().get(url)
+
+        with patch('patching.check_permissions') as mocked_check_permissions:
+            response = match.func(request)
+            assert response.status_code == 200
+            assert mocked_check_permissions.called
+
 
 @pytest.mark.urls(__name__)
 class TestPatchClassViews():
@@ -51,3 +63,13 @@ class TestPatchClassViews():
         match = self.resolver.resolve('/django_class_view')
         cls = match.func.view_class
         assert cls.get.__qualname__.startswith('class_view_wrapper')
+
+    def test_check_permissions_is_called(self):
+        url = '/django_class_view'
+        match = self.resolver.resolve(url)
+        request = RequestFactory().get(url)
+
+        with patch('patching.check_permissions') as mocked_check_permissions:
+            response = match.func(request)
+            assert response.status_code == 200
+            assert mocked_check_permissions.called

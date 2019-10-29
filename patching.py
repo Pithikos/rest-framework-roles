@@ -30,7 +30,7 @@ def is_rest_framework_loaded():
     return 'rest_framework' in sys.modules.keys()
 
 
-def before_view(request, view, *args, **kwargs):
+def check_permissions(request, view, *args, **kwargs):
     """
     Hook called just before every view
     """
@@ -48,7 +48,7 @@ def function_view_wrapper(view):
     def wrapped(request, *args, **kwargs):
         print('INSIDE function_view_wrapper.wrapped()..')
         # import IPython; IPython.embed(using=False)
-        before_view(request, view, *args, **kwargs)
+        check_permissions(request, view, *args, **kwargs)
         return view(request, *args, **kwargs)
     return wrapped
 
@@ -58,7 +58,7 @@ def class_view_wrapper(view):
     def wrapped(self, request, *args, **kwargs):
         print('INSIDE class_view_wrapper.wrapped()..')
         # import IPython; IPython.embed(using=False)
-        before_view(request, self, *args, **kwargs)  # Note we pass the class as view instead of function
+        check_permissions(request, self, *args, **kwargs)  # Note we pass the class as view instead of function
         return view(self, request, *args, **kwargs)
     return wrapped
 
@@ -67,7 +67,8 @@ def check_permissions_wrapper(view):
     """ Wraps Django REST framework check_permissions method """
     def wrapped(self, request, *args, **kwargs):
         print('INSIDE check_permissions_wrapper.wrapped()..')
-        before_view(request, self, *args, **kwargs)  # Note we pass the class as view instead of function
+        # import IPython; IPython.embed(using=False)
+        check_permissions(request, self, *args, **kwargs)  # Note we pass the class as view instead of function
         return view(self, request, *args, **kwargs)
     return wrapped
 
