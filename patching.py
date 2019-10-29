@@ -1,12 +1,14 @@
 import sys
 import inspect
 import importlib
+import logging
 
 from django.urls import resolve, get_resolver
 from django.urls.resolvers import URLPattern
 from django.conf import settings
 from django.utils.functional import empty
 
+logger = logging.getLogger(__name__)
 
 DJANGO_CLASS_VIEWS = {
     'get',
@@ -17,16 +19,6 @@ DJANGO_CLASS_VIEWS = {
     'head',
     'options',
     'trace',
-}
-
-
-DJANGO_REST_CLASS_VIEWS = {
-    'list',
-    'create',
-    'retrieve',
-    'update',
-    'partial_update',
-    'destroy',
 }
 
 
@@ -43,11 +35,16 @@ def before_view(request, view, *args, **kwargs):
     Hook called just before every view
     """
     print(f'BEFORE VIEW.. : {request.user}')
+    # import IPython; IPython.embed(using=False)
     # dispatchview.__wrapped__.__wrapped__
     # original_func = view.__wra
 
 
+# ------------------------------ Wrappers --------------------------------------
+
+
 def function_view_wrapper(view):
+    """ Wraps a Django view """
     def wrapped(request, *args, **kwargs):
         print('INSIDE function_view_wrapper.wrapped()..')
         # import IPython; IPython.embed(using=False)
@@ -57,12 +54,25 @@ def function_view_wrapper(view):
 
 
 def class_view_wrapper(view):
+    """ Wraps a Django method view """
     def wrapped(self, request, *args, **kwargs):
         print('INSIDE class_view_wrapper.wrapped()..')
         # import IPython; IPython.embed(using=False)
         before_view(request, self, *args, **kwargs)  # Note we pass the class as view instead of function
         return view(self, request, *args, **kwargs)
     return wrapped
+
+
+def check_permissions_wrapper(view):
+    """ Wraps Django REST framework check_permissions method """
+    def wrapped(self, request, *args, **kwargs):
+        print('INSIDE check_permissions_wrapper.wrapped()..')
+        before_view(request, self, *args, **kwargs)  # Note we pass the class as view instead of function
+        return view(self, request, *args, **kwargs)
+    return wrapped
+
+
+# ------------------------------------------------------------------------------
 
 
 def is_method_view(callback):
@@ -113,20 +123,25 @@ def patch(urlconf=None):
 
     # Patch simple function views directly
     for pattern in function_patterns:
+        # logger.warn(f'Patching {pattern.callback}')
         pattern.callback = function_view_wrapper(pattern.callback)
 
-    # Path class method
+    # Patch class based methods
     for pattern in class_patterns:
-
-        # Get the Django 'client' methods - essentially the view methods
-        # For a simple rest_function_view this would be 'get' and 'options'
         cls = get_view_class(pattern.callback)
-        methods = set(dir(cls)) & DJANGO_CLASS_VIEWS
 
-        # Actual patching of method
-        for method_name in methods:
-            original_method = getattr(cls, method_name)
-            setattr(cls, method_name, class_view_wrapper(original_method))
+        # Patching for Django
+        if not hasattr(cls, 'check_permissions'):
+            methods = set(dir(cls)) & DJANGO_CLASS_VIEWS
+            # Actual patching of method
+            for method_name in methods:
+                original_method = getattr(cls, method_name)
+                setattr(cls, method_name, class_view_wrapper(original_method))
+
+        # Patching for Django REST Framework
+        else:
+            original_check_permissions = getattr(cls, 'check_permissions')
+            setattr(cls, 'check_permissions', check_permissions_wrapper(original_check_permissions))
 
 
 def iter_urlpatterns(urlpatterns):

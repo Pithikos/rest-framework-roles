@@ -14,7 +14,7 @@ from .urls import *
 @pytest.mark.urls(__name__)
 class TestPatchClassViews():
     """
-    REST functions behave excactly the same as methods. They become methods
+    REST functions behave exactly the same as methods. They become methods
     of the class WrappedAPI.
     """
 
@@ -31,36 +31,48 @@ class TestPatchClassViews():
         match = self.resolver.resolve('/rest_class_view')
         assert match.func.__wrapped__.__wrapped__.__name__ == 'dispatch'
 
-    def test_method_views_patching(self, client, admin):
-        """
-        We expect the below order:
+    def test_methods_are_not_patched_directly(self):
+        # Note this is different behaviour than Django class methods
+        match = self.resolver.resolve('/rest_class_view')
+        cls = match.func.cls
+        assert not cls.get.__qualname__.startswith('class_view_wrapper'), "Should not be wrapped!"
+        assert not cls.get.__qualname__.startswith('function_view_wrapper')
 
-            dispatch -> get -> view wrapper -> view method
-        """
-        for url, view_name in (
-                ('/rest_function_view', 'rest_function_view'),
-                ('/rest_class_view', 'get'),
-            ):
+    def test_check_permissions_is_patched(self):
+        match = self.resolver.resolve('/rest_class_view')
+        cls = match.func.cls
+        assert cls.check_permissions.__qualname__.startswith('check_permissions_wrapper'), "Should be wrapped!"
 
-            match = self.resolver.resolve(url)
-            request = APIRequestFactory().get(url)
-            cls = match.func.view_class
-            inst = cls()
-            # import IPython; IPython.embed(using=False)
-
-            calls = []
-            def mark_called_dispatch(*args):
-                calls.append('dispatch')
-            def mark_called_view_wrapper(*args):
-                calls.append('view_wrapper')
-
-            # Keep track of order the functions are called
-            with patch.object(cls, 'dispatch', wraps=inst.dispatch) as mock_dispatch:
-                mock_dispatch.side_effect = mark_called_dispatch
-                with patch('patching.before_view') as mock_before_view:
-                    mock_before_view.side_effect = mark_called_view_wrapper
-                    # TODO: Test view was called after the view_wrapper
-                    response = match.func(request)
-                    assert response.status_code == 200
-                    assert response.content.decode() == view_name
-                    assert calls == ['dispatch', 'view_wrapper']
+    # def test_method_views_patching(self, client, admin):
+    #     """
+    #     We expect the below order:
+    #
+    #         dispatch -> get -> view wrapper -> view method
+    #     """
+    #     for url, view_name in (
+    #             ('/rest_function_view', 'rest_function_view'),
+    #             ('/rest_class_view', 'get'),
+    #         ):
+    #
+    #         match = self.resolver.resolve(url)
+    #         request = APIRequestFactory().get(url)
+    #         cls = match.func.view_class
+    #
+    #         inst = cls()
+    #
+    #         calls = []
+    #         def mark_called_dispatch(*args):
+    #             calls.append('dispatch')
+    #         def mark_called_view_wrapper(*args):
+    #             calls.append('view_wrapper')
+    #
+    #         # Keep track of order the functions are called
+    #         with patch.object(cls, 'dispatch', wraps=inst.dispatch) as mock_dispatch:
+    #             mock_dispatch.side_effect = mark_called_dispatch
+    #             with patch('patching.before_view') as mock_before_view:
+    #                 mock_before_view.side_effect = mark_called_view_wrapper
+    #                 # TODO: Test view was called after the view_wrapper
+    #                 response = match.func(request)
+    #                 assert response.status_code == 200
+    #                 assert response.content.decode() == view_name
+    #                 assert calls == ['dispatch', 'view_wrapper']
