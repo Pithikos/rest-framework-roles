@@ -3,7 +3,8 @@ import importlib
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
-from .patching import is_django_configured
+# from .patching import is_django_configured
+from .decorators import DEFAULT_COST
 
 
 def validate_settings():
@@ -41,6 +42,23 @@ def load_view_permissions():
     pkg = importlib.import_module(pkgpath)
     view_permissions = getattr(pkg, dictkey)
     return view_permissions
+
+
+def parse_roles(roles_dict):
+    """
+    Parses given roles to a common structure that can be used for building the lookup
+    """
+    d = {}
+    for role_name, role_checker in roles_dict.items():
+        d[role_name] = {}
+        d[role_name]['role_name'] = role_name
+        d[role_name]['role_checker'] = role_checker
+        try:
+            cost = role_checker.cost
+        except AttributeError:
+            cost = DEFAULT_COST
+        d[role_name]['role_checker_cost'] = cost
+    return d
 
 
 def create_lookup(roles, view_permissions):

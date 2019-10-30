@@ -1,6 +1,6 @@
 DEFAULT_CHEAP = 0
 DEFAULT_EXPENSIVE = 50
-
+DEFAULT_COST = DEFAULT_CHEAP
 
 # ------------------------------------------------------------------------------
 

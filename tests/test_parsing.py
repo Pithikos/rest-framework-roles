@@ -4,7 +4,8 @@
 # from django.test.utils import override_settings
 
 from ..roles import is_admin, is_user, is_anon
-from ..parsing import create_lookup
+from ..parsing import create_lookup, parse_roles
+from ..decorators import expensive, cheap
 
 # ROLES = {
 #     'user': {'role_checker': is_user},
@@ -33,6 +34,33 @@ from ..parsing import create_lookup
 # @patch('rest_framework_roles.tests.settings.PERMISSIONS', [])
 # def test_usage():
 #     pass
+
+
+
+
+def test_parse_roles():
+    # No cost
+    assert parse_roles({'admin': is_admin}) == {
+        'admin': {
+            'role_name': 'admin',
+            'role_checker': is_admin,
+            'role_checker_cost': 0,
+        }
+    }
+
+def test_parse_roles_cost():
+    @expensive(cost=50)
+    def is_owner():
+        pass
+
+    parsed = parse_roles({'owner': is_owner})
+    assert parsed == {
+        'owner': {
+            'role_name': 'owner',
+            'role_checker': is_owner,
+            'role_checker_cost': 50,
+        }
+    }
 
 
 def test_transformation():
@@ -93,7 +121,6 @@ def test_transformation():
     }
     outcome = create_lookup(roles, permissions)
     assert outcome == expected
-
 
 # @mock.patch('authentication.models.USER_PAYPLANS', USER_PAYPLANS)
 # @mock.patch('authentication.models.USER_PERMISSIONS_SCHEMA', USER_PERMISSIONS_SCHEMA)
