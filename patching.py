@@ -38,8 +38,7 @@ def is_rest_framework_loaded():
 def function_view_wrapper(view):
     """ Wraps a Django view """
     def wrapped(request, *args, **kwargs):
-        print('INSIDE function_view_wrapper.wrapped()..')
-        # import IPython; IPython.embed(using=False)
+        logger.debug('RUNNING: function_view_wrapper.wrapped()')
         check_permissions(request, view, *args, **kwargs)
         return view(request, *args, **kwargs)
     return wrapped
@@ -48,8 +47,7 @@ def function_view_wrapper(view):
 def class_view_wrapper(view):
     """ Wraps a Django method view """
     def wrapped(self, request, *args, **kwargs):
-        print('INSIDE class_view_wrapper.wrapped()..')
-        # import IPython; IPython.embed(using=False)
+        logger.debug('RUNNING: class_view_wrapper.wrapped()')
         check_permissions(request, self, *args, **kwargs)  # Note we pass the class as view instead of function
         return view(self, request, *args, **kwargs)
     return wrapped
@@ -58,9 +56,7 @@ def class_view_wrapper(view):
 def check_permissions_wrapper(original_check_permissions):
     """ Wraps Django REST framework check_permissions method """
     def wrapped(self, request):
-        print('INSIDE check_permissions_wrapper.wrapped()..')
-        # o = original_check_permissions
-        # import IPython; IPython.embed(using=False)
+        logger.debug('RUNNING: check_permissions_wrapper.wrapped()')
         check_permissions(request, self)  # Note we pass the class as view instead of function
         return original_check_permissions(self, request)
     return wrapped
