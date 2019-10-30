@@ -63,6 +63,45 @@ def test_parse_roles_cost():
     }
 
 
+def test_rules_sorted_by_cost():
+
+    @expensive
+    def is_expensivo(*args):
+        pass
+
+    @cheap(cost=-5)
+    def is_cheapo(*args):
+        pass
+
+    roles = {
+        'admin': is_admin,
+        'cheapo': is_cheapo,
+        'expensivo': is_expensivo,
+    }
+
+    permissions = [
+        {
+          'view': 'authentication.views.UserViewSet',
+          'permissions': {
+            'admin': {'create': True},
+            'expensivo': {'create': True},
+            'cheapo': {'create': True},
+          }
+        }
+    ]
+
+    lookup = create_lookup(roles, permissions)
+    assert lookup == {
+        'authentication.views.UserViewSet': {
+            'create': [
+                (True, is_cheapo),
+                (True, is_admin),
+                (True, is_expensivo),
+            ]
+        }
+    }
+
+
 def test_transformation():
     is_not_updating_permissions = lambda v, r: True
     is_self = lambda v, r: True
