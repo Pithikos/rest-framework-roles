@@ -1,7 +1,10 @@
 DEFAULT_CHEAP = 0
 DEFAULT_EXPENSIVE = 50
 
-# Permissions
+
+# ------------------------------------------------------------------------------
+
+
 def allowed(*roles):
     pass
 
@@ -10,25 +13,38 @@ def disallowed(*roles):
     pass
 
 
-def permissions():
-    pass
+# ------------------------------------------------------------------------------
 
 
-# Cost decorators
-def cheap(fn, cost=DEFAULT_CHEAP):
-    def wrapped(*args, **kwargs):
-        return fn(*args, **kwargs)
-    assert DEFAULT_CHEAP <= cost < DEFAULT_EXPENSIVE
-    wrapped.cost = cost
-    return wrapped
+def cheap(*args, **kwargs):
+    """
+    Denote if role checker is cheap
+    """
+    cost = kwargs.get('cost', DEFAULT_CHEAP)
+    assert cost < DEFAULT_EXPENSIVE, f"Must be below {DEFAULT_EXPENSIVE}, but given {cost}"
+
+    def decorator(fn):
+        def wrapped(*args, **kwargs):
+            return fn(*args, **kwargs)
+        wrapped.cost = cost
+        return wrapped
+    decorator.cost = cost
+
+    return decorator
 
 
-def expensive(fn, cost=DEFAULT_EXPENSIVE):
+def expensive(*args, **kwargs):
     """
     Denote if role checker is expensive
     """
-    def wrapped(*args, **kwargs):
-        return fn(*args, **kwargs)
-    assert DEFAULT_EXPENSIVE <= cost
-    wrapped.cost = cost
-    return wrapped
+    cost = kwargs.get('cost', DEFAULT_EXPENSIVE)
+    assert cost >= DEFAULT_EXPENSIVE, f"Must be above {DEFAULT_EXPENSIVE}, but given {cost}"
+
+    def decorator(fn):
+        def wrapped(*args, **kwargs):
+            return fn(*args, **kwargs)
+        wrapped.cost = cost
+        return wrapped
+    decorator.cost = cost
+
+    return decorator
