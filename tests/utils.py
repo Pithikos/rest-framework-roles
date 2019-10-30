@@ -33,13 +33,13 @@ def get_response(user, get=None, post=None):
 def assert_allowed(user, get=None, post=None, expected_status=(200, 201)):
     response = get_response(user, get, post)
     if response.status_code not in expected_status:
-        raise AssertionError(f"'{user}' should be allowed, but got '{response.status_code}'")
+        raise AssertionError(f"'{user}' should be allowed. Got '{response.status_code}'")
 
 
 def assert_disallowed(user, get=None, post=None, expected_status=(403,)):
     response = get_response(user, get, post)
     if response.status_code not in expected_status:
-        raise AssertionError(f"'{user}' should be forbidden, but got '{response.status_code}'")
+        raise AssertionError(f"'{user}' should be forbidden. Got '{response.status_code}'")
 
 
 # ------------------------------------------------------------------------------
