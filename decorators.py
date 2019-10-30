@@ -1,6 +1,7 @@
+DEFAULT_CHEAP = 0
+DEFAULT_EXPENSIVE = 50
+
 # Permissions
-
-
 def allowed(*roles):
     pass
 
@@ -13,15 +14,21 @@ def permissions():
     pass
 
 
-# Other
-def expensive(fn, cost=1):
-    """
-    Mark role checking function as expensive
+# Cost decorators
+def cheap(fn, cost=DEFAULT_CHEAP):
+    def wrapped(*args, **kwargs):
+        return fn(*args, **kwargs)
+    assert DEFAULT_CHEAP <= cost < DEFAULT_EXPENSIVE
+    wrapped.cost = cost
+    return wrapped
 
-    Args:
-        cost(int): Denotes the expensiveness of the check (0 is cheap, anything above is expensive).
-                   Functions will be checked from cheapest to most expensive.
+
+def expensive(fn, cost=DEFAULT_EXPENSIVE):
+    """
+    Denote if role checker is expensive
     """
     def wrapped(*args, **kwargs):
         return fn(*args, **kwargs)
+    assert DEFAULT_EXPENSIVE <= cost
+    wrapped.cost = cost
     return wrapped
