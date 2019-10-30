@@ -8,6 +8,8 @@ from django.urls.resolvers import URLPattern
 from django.conf import settings
 from django.utils.functional import empty
 
+from rest_framework_roles.permissions import check_permissions
+
 logger = logging.getLogger(__name__)
 
 DJANGO_CLASS_VIEWS = {
@@ -28,13 +30,6 @@ def is_django_configured():
 
 def is_rest_framework_loaded():
     return 'rest_framework' in sys.modules.keys()
-
-
-def check_permissions(request, view, *args, **kwargs):
-    """
-    Hook called at the right place to check role permissions
-    """
-    print(f'Check permissions for {request.user}')
 
 
 # ------------------------------ Wrappers --------------------------------------
