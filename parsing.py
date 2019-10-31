@@ -7,6 +7,10 @@ from django.core.exceptions import ImproperlyConfigured
 from .decorators import DEFAULT_COST
 
 
+class InvalidConfiguration(Exception):
+    pass
+
+
 def validate_settings():
     if not hasattr(settings, 'REST_FRAMEWORK_ROLES'):
         raise ImproperlyConfigured("Missing 'REST_FRAMEWORK_ROLES' in settings")
@@ -61,11 +65,77 @@ def parse_roles(roles_dict):
     return d
 
 
+def parse_permissions(view_permissions, merge_same_views=True):
+    """
+    Parses permissions to a uniform more verbose format
+
+    Args:
+        merge_same_views(bool): Merge rules for the same views
+    """
+
+    # Deconstruct concise syntax for class-based views
+    for i, rule in enumerate(view_permissions):
+        view = rule['view']
+        permissions = rule['permissions']
+        new_rules = []
+        for role_name, unknown in permissions.items():
+            if isinstance(unknown, dict):
+                for method_name, granted in unknown.items():
+                    new_rule = {
+                        'view': f"{view}.{method_name}",
+                        'permissions': {role_name: granted},
+                    }
+                    new_rules.append(new_rule)
+        if new_rules:
+            for new_rule in reversed(new_rules):
+                view_permissions.insert(i+1, new_rule)
+            del view_permissions[i]
+
+    # Merge rules for same views
+    if merge_same_views:
+        new_view_permissions = []
+        all_views = [rule['view'] for rule in view_permissions]
+        added = set()
+
+        for i, rule in enumerate(view_permissions):
+            if rule['view'] in added:
+                continue
+            indice = [j for j, r in enumerate(view_permissions) if r['view'] == rule['view']]
+            if len(indice) > 1:
+                permissions_to_combine = [view_permissions[j]['permissions'] for j in indice]
+
+                # Check for duplicates
+                role_names = []
+                for d in permissions_to_combine:
+                    role_names.extend(d.keys())
+                for role_name in role_names:
+                    if role_names.count(role_name) > 1:
+                        raise InvalidConfiguration(f'You have set permissions for {role_name} more than once')
+
+                permissions_combined = {}
+                for d in permissions_to_combine:
+                    permissions_combined.update(d)
+
+                new_view_permissions.append({
+                    'view': rule['view'],
+                    'permissions': permissions_combined,
+                })
+                added.add(rule['view'])
+            else:
+                new_view_permissions.append(rule)
+        view_permissions = new_view_permissions
+
+    return view_permissions
+
+
 def create_lookup(roles, view_permissions):
     """
     Transform all configuration into a lookup table to be used for permission checking
 
-    Example:
+    Args:
+        roles(list): A list of str or role checking
+
+    Output example:
         {
             'authentication.views.UserViewSet': {
                 'create': [

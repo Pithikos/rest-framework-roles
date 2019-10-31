@@ -4,7 +4,7 @@
 # from django.test.utils import override_settings
 
 from ..roles import is_admin, is_user, is_anon
-from ..parsing import create_lookup, parse_roles
+from ..parsing import create_lookup, parse_roles, parse_permissions
 from ..decorators import expensive, cheap
 
 # ROLES = {
@@ -61,6 +61,48 @@ def test_parse_roles_cost():
             'role_checker_cost': 50,
         }
     }
+
+
+def test_parse_view_permissions():
+    permissions = [{
+        'view': 'myclassview',
+        'permissions': {
+            'admin': {
+                'myaction1': True,
+                'myaction2': True,
+                'myaction3': True,
+            },
+            'user': {
+                'myaction3': False,
+            }
+        },
+    }]
+    # Namely extend views to point to the actual views of the classes if
+    # needed
+    parsed = parse_permissions(permissions)
+    assert parsed == [
+        {
+            'view': 'myclassview.myaction1',
+            'permissions': {'admin': True}
+        },
+        {
+            'view': 'myclassview.myaction2',
+            'permissions': {'admin': True}
+        },
+        {
+            'view': 'myclassview.myaction3',
+            'permissions': {'admin': True, 'user': False},
+        }
+    ]
+
+def test_parse_function_views():
+    assert parse_permissions([{
+        'view': 'myfunctionview',
+        'permissions': {'admin': True}
+    }]) == [{
+        'view': 'myfunctionview',
+        'permissions': {'admin': True},
+    }]
 
 
 def test_rules_sorted_by_cost():
