@@ -11,36 +11,39 @@ class InvalidConfiguration(Exception):
     pass
 
 
-def validate_settings():
-    if not hasattr(settings, 'REST_FRAMEWORK_ROLES'):
-        raise ImproperlyConfigured("Missing 'REST_FRAMEWORK_ROLES' in settings")
-    roles_config = settings.REST_FRAMEWORK_ROLES
+def validate_config(config):
     required_keys = ['view_permissions']
     for k in required_keys:
-        if k not in roles_config:
-            raise ImproperlyConfigured(f"'REST_FRAMEWORK_ROLES' is missing required settings '{k}'")
+        if k not in config:
+            raise ImproperlyConfigured(f"Missing required setting '{k}'")
 
 
-# Load settings for this module
-if is_django_configured():
-    validate_settings()
-    config = settings.REST_FRAMEWORK_ROLES
-else:
-    raise Exception(f"Must setup Django settings before loading '{__name__}'")
+def load_config(modpath=None):
+    KEY_NAME = 'REST_FRAMEWORK_ROLES'
+    if not modpath:
+        config = getattr(settings, KEY_NAME)
+    else:
+        mod = importlib.import_module(modpath)
+        config = getattr(mod, KEY_NAME)
+    validate_config(config)
+    return config
 
 
 def load_roles():
-    """ Load ROLES from settings """
+    """ Load ROLES """
+
+    # For roles we only check at the settings file
     assert 'roles' in config, "Not set 'view_permissions'"
     pkgpath = '.'.join(config['roles'].split('.')[:-1])
     dictkey = config['roles'].split('.')[-1]
     pkg = importlib.import_module(pkgpath)
     roles = getattr(pkg, dictkey)
+
     return roles
 
 
 def load_view_permissions():
-    """ Read VIEW_PERMISSIONS from Django settings """
+    """ Load VIEW_PERMISSIONS """
     pkgpath = '.'.join(config['view_permissions'].split('.')[:-1])
     dictkey = config['view_permissions'].split('.')[-1]
     pkg = importlib.import_module(pkgpath)
