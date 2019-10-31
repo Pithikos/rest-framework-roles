@@ -97,15 +97,10 @@ def patch(urlconf=None):
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
     """
-    if not urlconf:
-        urlconf = importlib.import_module(settings.ROOT_URLCONF)
-    assert type(urlconf) != str, f"URLConf should not be string. Got '{urlconf}'"
-
     # Get all active patterns
-    patterns = list(iter_urlpatterns(urlconf.urlpatterns))
     class_patterns = []
     function_patterns = []
-    for pattern in patterns:
+    for pattern in get_urlpatterns(urlconf):
         if is_method_view(pattern.callback):
             class_patterns.append(pattern)
         else:
@@ -132,6 +127,13 @@ def patch(urlconf=None):
         else:
             original_check_permissions = getattr(cls, 'check_permissions')
             setattr(cls, 'check_permissions', check_permissions_wrapper(original_check_permissions))
+
+
+def get_urlpatterns(urlconf=None):
+    if not urlconf:
+        urlconf = importlib.import_module(settings.ROOT_URLCONF)
+    assert type(urlconf) != str, f"URLConf should not be string. Got '{urlconf}'"
+    return list(iter_urlpatterns(urlconf.urlpatterns))
 
 
 def iter_urlpatterns(urlpatterns):
