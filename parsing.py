@@ -2,8 +2,8 @@ import importlib
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.module_loading import import_string
 
-# from .patching import is_django_configured
 from .decorators import DEFAULT_COST
 
 
@@ -18,36 +18,42 @@ def validate_config(config):
             raise ImproperlyConfigured(f"Missing required setting '{k}'")
 
 
-def load_config(modpath=None):
+def load_config(dotted_path=None):
     KEY_NAME = 'REST_FRAMEWORK_ROLES'
-    if not modpath:
+    if not dotted_path:
         config = getattr(settings, KEY_NAME)
     else:
-        mod = importlib.import_module(modpath)
+        mod = import_string(dotted_path)
         config = getattr(mod, KEY_NAME)
+
+        config['roles'] = load_roles(config)
+        config['view_permissions'] = load_view_permissions(config)
+
     validate_config(config)
     return config
 
 
-def load_roles():
-    """ Load ROLES """
-
-    # For roles we only check at the settings file
-    assert 'roles' in config, "Not set 'view_permissions'"
-    pkgpath = '.'.join(config['roles'].split('.')[:-1])
-    dictkey = config['roles'].split('.')[-1]
-    pkg = importlib.import_module(pkgpath)
-    roles = getattr(pkg, dictkey)
-
+def load_roles(config):
+    """
+    Load roles (we only check at settings file)
+    """
+    roles = config['roles']
+    if isinstance(roles, str):
+        roles = import_string(roles)
     return roles
 
 
-def load_view_permissions():
-    """ Load VIEW_PERMISSIONS """
-    pkgpath = '.'.join(config['view_permissions'].split('.')[:-1])
-    dictkey = config['view_permissions'].split('.')[-1]
-    pkg = importlib.import_module(pkgpath)
-    view_permissions = getattr(pkg, dictkey)
+def load_view_permissions(config):
+    """
+    Load view permissions
+    """
+    # Check first at settings file
+    view_permissions = config['view_permissions']
+    if isinstance(view_permissions, str):
+        view_permissions = import_string(view_permissions)
+
+    # Get view permissions from classes
+    # TODO: ..
     return view_permissions
 
 
