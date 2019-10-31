@@ -60,7 +60,6 @@ def pytest_configure(config):
             'django.contrib.auth.hashers.MD5PasswordHasher',
         ),
     )
-    django.setup()
 
     # Add project and test root to path
     sys.path.insert(0, dirname(dirname(abspath(__file__))))
