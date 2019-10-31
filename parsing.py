@@ -163,14 +163,10 @@ def create_lookup(roles, view_permissions):
             ))
 
     # Sort by cost
-    # for view, rules in lookup.items():
-    #     for action
-    #     import IPython; IPython.embed(using=False)
+    for view, rules in lookup.items():
+        rules.sort(key=lambda item: item[1].cost)
+
     return lookup
-
-
-# def add_to_lookup(permissions):
-
 
 
 def get_lookup():

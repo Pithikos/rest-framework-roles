@@ -169,13 +169,9 @@ def test_rules_sorted_by_cost():
 
     lookup = create_lookup(roles, permissions)
     assert lookup == {
-        'authentication.views.UserViewSet': {
-            'create': [
-                (True, is_cheapo),
-                (True, is_admin),
-                (True, is_expensivo),
-            ]
-        }
+        'authentication.views.UserViewSet.create': [
+            (True, is_cheapo), (True, is_admin), (True, is_expensivo)
+        ]
     }
 
 # @mock.patch('authentication.models.USER_PAYPLANS', USER_PAYPLANS)
