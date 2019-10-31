@@ -146,24 +146,30 @@ def create_lookup(roles, view_permissions):
         }
     """
     lookup = {}
+    roles = parse_roles(roles)
+    view_permissions = parse_permissions(view_permissions)
+
     for view_rule in view_permissions:
-        # view_class = importlib.import_module(view_rule['view'])
-        view_path = view_rule['view']
+        view = view_rule['view']
         permissions = view_rule['permissions']
-        lookup[view_path] = {}
+        lookup[view] = []
 
         # Populate general and instance checkers
-        for role, actions in permissions.items():
-            for action, value in actions.items():
+        for role, granted in permissions.items():
+            lookup[view].append((
+                granted,
+                roles[role]['role_checker'],
+            ))
 
-                if action not in lookup[view_path]:
-                    lookup[view_path][action] = []
-
-                lookup[view_path][action].append((
-                    value,        # check if to be granted permission
-                    roles[role],  # role checker
-                ))
+    # Sort by cost
+    # for view, rules in lookup.items():
+    #     for action
+    #     import IPython; IPython.embed(using=False)
     return lookup
+
+
+# def add_to_lookup(permissions):
+
 
 
 def get_lookup():
