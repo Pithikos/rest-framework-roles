@@ -19,6 +19,12 @@ def test_parse_roles():
     }
 
 
+def test_parse_roles_adds_cost_attr():
+    roles = parse_roles({'admin': is_admin})
+    assert hasattr(roles['admin']['role_checker'], 'cost')
+    assert roles['admin']['role_checker'].cost == roles['admin']['role_checker_cost']
+
+
 def test_parse_roles_cost():
     @expensive(cost=50)
     def is_owner():

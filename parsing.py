@@ -61,6 +61,7 @@ def parse_roles(roles_dict):
             cost = role_checker.cost
         except AttributeError:
             cost = DEFAULT_COST
+            role_checker.cost = cost
         d[role_name]['role_checker_cost'] = cost
     return d
 
