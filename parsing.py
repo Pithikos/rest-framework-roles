@@ -5,6 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.module_loading import import_string
 
 from .decorators import DEFAULT_COST
+from .utils import dotted_path
 
 
 class InvalidConfiguration(Exception):
@@ -43,7 +44,7 @@ def load_roles(config):
     return roles
 
 
-def load_view_permissions(config):
+def load_view_permissions(config, urlconf=None):
     """
     Load view permissions
     """
@@ -53,7 +54,19 @@ def load_view_permissions(config):
         view_permissions = import_string(view_permissions)
 
     # Get view permissions from classes
-    # TODO: ..
+    from .patching import get_urlpatterns, get_view_class
+    urlpatterns = get_urlpatterns(urlconf)
+    for pattern in urlpatterns:
+        cls = get_view_class(pattern.callback)
+        new_rule = parse_permissions([{
+            'view': dotted_path(cls),
+            'permissions': cls.view_permissions,
+        }])[0]
+        view_permissions.append(new_rule)
+
+    # Call one last time to sort and merge rules
+    view_permissions = parse_permissions(view_permissions)
+
     return view_permissions
 
 
