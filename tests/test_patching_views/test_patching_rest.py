@@ -1,30 +1,73 @@
 import importlib
-import inspect
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch
 from unittest import mock
-from functools import partial
 
 import pytest
 from django.urls import get_resolver
 from rest_framework.test import APIRequestFactory
+from django.contrib.auth.models import User
+from django.urls import path
+from django.http import HttpResponse
+from rest_framework import permissions, viewsets, views, decorators
+import rest_framework as drf
 
-from ..fixtures import admin, user, anon
 import patching
-from patching import is_method_view, get_view_class
-from .urls import *
-from ..utils import dummy_view
+from ..utils import UserSerializer, _func_name, dummy_view
+
+
+# -------------------------------- Setup app -----------------------------------
+
+
+@drf.decorators.api_view()
+def rest_function_view(request):
+    # This behaves exactly the same as if it was a method of APIView
+    return HttpResponse(_func_name())
+
+
+class RestAPIView(drf.views.APIView):  # This is the mother class of all classes
+    serializer_class = UserSerializer
+    permission_classes = (drf.permissions.AllowAny,)
+    queryset = User.objects.all()
+
+    def get(self, request):
+        return HttpResponse(_func_name())
+
+    def not_a_view(self, *args, **kwargs):
+        # Not a view since not marked with decorator
+        return HttpResponse(_func_name())
+
+
+class RestViewSet(drf.viewsets.ViewSet):
+    def list(self, request):
+        return HttpResponse(_func_name())
+
+    def custom_view(self, request):
+        return HttpResponse(_func_name())
+
+    # TODO: This is not tested atm
+    @drf.decorators.action(detail=False, methods=['get'], url_name='custom_action', url_path='custom_action')
+    def custom_action(self, request):
+        return HttpResponse(_func_name())
+
+
+urlpatterns = [
+    path('rest_function_view', rest_function_view),  # internally ends up being a method
+    path('rest_class_view', RestAPIView.as_view()),
+    path('rest_class_viewset', RestViewSet.as_view({'get': 'list'})),
+    path('rest_class_viewset/custom_view', RestViewSet.as_view({'get': 'custom_view'}))
+]
+
+# ------------------------------------------------------------------------------
 
 
 @pytest.mark.urls(__name__)
 class TestPatchClassViews():
     """
-    REST functions behave exactly the same as methods. They become methods
-    of the class WrappedAPI.
+    REST functions behave exactly the same as in REST class views. They become
+    methods of the class WrappedAPI.
     """
 
     def setup(self):
-        global urlpatterns
-        urlpatterns = class_based_patterns.values()
 
         # Store a reference to the original check_permissions to make testing easier
         cls = drf.views.APIView

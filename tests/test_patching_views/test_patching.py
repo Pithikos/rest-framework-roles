@@ -1,16 +1,21 @@
+from .test_patching_django import DjangoView
+from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view
+from .test_patching_django import urlpatterns as django_urlpatterns
+from .test_patching_rest import urlpatterns as rest_urlpatterns
 from patching import is_method_view, get_view_class
-from .urls import *
+
+
+all_urlpatterns = django_urlpatterns + rest_urlpatterns
 
 
 def test_is_method_view():
-    for pattern in function_based_patterns.values():
-        assert not is_method_view(pattern.callback)
-    for pattern in class_based_patterns.values():
-        assert is_method_view(pattern.callback)
-
-    # Viewsets behave a bit differently
-    for pattern in viewset_based_patterns.values():
-        assert is_method_view(pattern.callback)
+    # We know that only django_function_view is not a method
+    # For REST every view is a method, including decorated functions.
+    for pattern in all_urlpatterns:
+        if 'django_function_view' in str(pattern):
+            assert not is_method_view(pattern.callback)
+        else:
+            assert is_method_view(pattern.callback)
 
 
 def test_get_view_class():

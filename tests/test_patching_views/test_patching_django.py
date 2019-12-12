@@ -2,14 +2,40 @@ import importlib
 from unittest.mock import patch
 
 import pytest
+import django
 from django.urls import get_resolver
 from django.test import RequestFactory
+from django.contrib.auth.models import User
+from django.urls import path
+from django.http import HttpResponse
 
-from .urls import *
+# from .urls import *
 import patching
+from ..utils import _func_name
 
 
-urlpatterns = []
+# -------------------------------- Setup app -----------------------------------
+
+
+def django_function_view(request):
+    return HttpResponse(_func_name())
+
+
+class DjangoView(django.views.generic.ListView):
+    model = User
+
+    def get(self, request):
+        return HttpResponse(_func_name())
+
+    def not_a_view(self, *args, **kwargs):
+        # Not a view since not the standard get, post, etc.
+        return HttpResponse(_func_name())
+
+
+urlpatterns = [
+    path('django_function_view', django_function_view),
+    path('django_class_view', DjangoView.as_view()),
+]
 
 
 # ------------------------------------------------------------------------------
@@ -19,8 +45,6 @@ urlpatterns = []
 class TestPatchFunctionViews():
 
     def setup(self):
-        global urlpatterns
-        urlpatterns = function_based_patterns.values()
         patching.patch()  # Ensure patching occurs!
         self.urlconf = importlib.import_module(__name__)
         self.resolver = get_resolver(self.urlconf)
@@ -49,8 +73,6 @@ class TestPatchClassViews():
     """
 
     def setup(self):
-        global urlpatterns
-        urlpatterns = class_based_patterns.values()
         patching.patch()  # Ensure patching occurs!
         self.urlconf = importlib.import_module(__name__)
         self.resolver = get_resolver(self.urlconf)
