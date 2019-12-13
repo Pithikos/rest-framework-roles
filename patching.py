@@ -1,3 +1,8 @@
+"""
+Patching is mainly about patching the desired views with the before_view function.
+This ensures that permissions are checked before running the view.
+"""
+
 import sys
 import inspect
 import importlib
@@ -24,6 +29,11 @@ DJANGO_CLASS_VIEWS = {
 }
 
 
+
+class Misconfigured(Exception):
+    pass
+
+
 def is_django_configured():
     return settings._wrapped is not empty
 
@@ -34,32 +44,29 @@ def is_rest_framework_loaded():
 
 # ------------------------------ Wrappers --------------------------------------
 
+def before_view(view):
+    """
+    Main wrapper for views
 
-def function_view_wrapper(view):
-    """ Wraps a Django view """
-    def wrapped(request, *args, **kwargs):
-        logger.debug('RUNNING: function_view_wrapper.wrapped()')
-        check_permissions(request, view, *args, **kwargs)
+    Ensures permissions are checked before calling the view
+    """
+
+    def pre_view(request, view):
+        logger.debug('Checking permissions..')
+        check_permissions(request, view)
+
+    def wrapped_function(request, *args, **kwargs):
+        pre_view(request, view)
         return view(request, *args, **kwargs)
-    return wrapped
 
-
-def class_view_wrapper(view):
-    """ Wraps a Django method view """
-    def wrapped(self, request, *args, **kwargs):
-        logger.debug('RUNNING: class_view_wrapper.wrapped()')
-        check_permissions(request, self, *args, **kwargs)  # Note we pass the class as view instead of function
+    def wrapped_method(self, request, *args, **kwargs):
+        pre_view(request, self)
         return view(self, request, *args, **kwargs)
-    return wrapped
 
-
-def check_permissions_wrapper(original_check_permissions):
-    """ Wraps Django REST framework check_permissions method """
-    def wrapped(self, request):
-        logger.debug('RUNNING: check_permissions_wrapper.wrapped()')
-        check_permissions(request, self)  # Note we pass the class as view instead of function
-        return original_check_permissions(self, request)
-    return wrapped
+    if is_method_view(view):
+        return wrapped_method
+    else:
+        return wrapped_function
 
 
 # ------------------------------------------------------------------------------
@@ -94,13 +101,15 @@ def patch(urlconf=None):
     """
     Entrypoint for all patching (after configurations have loaded)
 
+    Essentially we look for the below
+
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
     """
-    # Get all active patterns
     class_patterns = []
     function_patterns = []
-    for pattern in get_urlpatterns(urlconf):
+    _all_patterns = get_urlpatterns(urlconf)
+    for pattern in _all_patterns:
         if is_method_view(pattern.callback):
             class_patterns.append(pattern)
         else:
@@ -108,32 +117,59 @@ def patch(urlconf=None):
 
     # Patch simple function views directly
     for pattern in function_patterns:
-        # logger.warn(f'Patching {pattern.callback}')
-        pattern.callback = function_view_wrapper(pattern.callback)
+        pattern.callback = before_view(pattern.callback)
 
     # Patch class based methods
     for pattern in class_patterns:
         cls = get_view_class(pattern.callback)
+        views = []  # ..for patching
 
-        # Patching for Django
-        if not hasattr(cls, 'check_permissions'):
-            methods = set(dir(cls)) & DJANGO_CLASS_VIEWS
-            # Actual patching of method
-            for method_name in methods:
-                original_method = getattr(cls, method_name)
-                setattr(cls, method_name, class_view_wrapper(original_method))
+        # Find views by directive: view_permissions
+        if hasattr(cls, 'view_permissions'):
+            for d in cls.view_permissions.values():
+                for view_name in d.keys():
+                    if not hasattr(cls, view_name):
+                        raise Misconfigured(f"Class '{cls.__name__}' has no method {view_name}")
+                    views.append(view_name)
 
-        # Patching for Django REST Framework
-        else:
-            original_check_permissions = getattr(cls, 'check_permissions')
-            setattr(cls, 'check_permissions', check_permissions_wrapper(original_check_permissions))
+        # Find views by directive: decorators
+        for resource_name in dir(cls):
+            resource = getattr(cls, resource_name)
+            if hasattr(resource, 'view_permissions'):
+                views.append(resource_name)
+
+        # Special case: Find REST views. These are annoying since they behave like nothing else.
+        # TODO: Figure out the flow of this..
+        #    1. Check if it is a REST function
+        #    2. Patch all common methods available (get, post, etc.). This is OK
+        #       since if it's a function then there will not be any custom method.
+        #    3. Issue: We can't get the view name for use with PERMISSIONS_REGISTRY
+        #       Solution: Patch the permission checking directly here
+        #
+        #  Redesign note
+        #  -------------
+        #
+        #  Don't use PERMISSIONS_REGISTRY. Instead for every view with a directive
+        #  do the below:
+        #    1. Attach view_permissions directly to the view function
+        #    2. Monkey patch view with before_view
+        #    3. before_view will always make use of view.view_permissions when
+        #       determining permissions.
+        if hasattr(pattern.callback, '__wrapped__') and hasattr(pattern.callback, 'view_permissions'):
+            import IPython; IPython.embed(using=False)
+
+        # Perform patching
+        for view_name in views:
+            original_view = getattr(cls, view_name)
+            setattr(cls, view_name, before_view(original_view))
 
 
 def get_urlpatterns(urlconf=None):
     if not urlconf:
         urlconf = importlib.import_module(settings.ROOT_URLCONF)
     assert type(urlconf) != str, f"URLConf should not be string. Got '{urlconf}'"
-    return list(iter_urlpatterns(urlconf.urlpatterns))
+    url_patterns = list(iter_urlpatterns(urlconf.urlpatterns))
+    return url_patterns
 
 
 def iter_urlpatterns(urlpatterns):

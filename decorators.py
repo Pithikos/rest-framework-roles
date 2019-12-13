@@ -6,11 +6,17 @@ DEFAULT_COST = DEFAULT_CHEAP
 
 
 def allowed(*roles):
-    pass
+    def wrapped(fn):
+        fn.view_permissions = roles  # TODO: Extend this to have a conventional form
+        return fn
+    return wrapped
 
 
 def disallowed(*roles):
-    pass
+    def wrapped(fn):
+        fn.view_permissions = roles  # TODO: Extend this to have a conventional form
+        return fn
+    return wrapped
 
 
 # ------------------------------------------------------------------------------

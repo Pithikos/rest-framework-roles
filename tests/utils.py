@@ -42,6 +42,10 @@ def assert_disallowed(user, get=None, post=None, expected_status=(403,)):
         raise AssertionError(f"'{user}' should be forbidden. Got '{response.status_code}'")
 
 
+def is_patched(fn):
+    return 'before_view' in str(fn)
+
+
 # ------------------------------------------------------------------------------
 
 
