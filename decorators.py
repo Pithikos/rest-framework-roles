@@ -1,3 +1,6 @@
+import parsing
+import exceptions
+
 DEFAULT_CHEAP = 0
 DEFAULT_EXPENSIVE = 50
 DEFAULT_COST = DEFAULT_CHEAP
@@ -7,14 +10,40 @@ DEFAULT_COST = DEFAULT_CHEAP
 
 def allowed(*roles):
     def wrapped(fn):
-        fn.view_permissions = roles  # TODO: Extend this to have a conventional form
+        role_checkers = parsing.load_roles()
+
+        # Check first roles are valid
+        for r in roles:
+            if r not in role_checkers:
+                raise exceptions.Misconfigured(f"Invalid role '{r}'")
+
+        fn.view_permissions = []
+        for role, role_checker in role_checkers.items():
+            if role in roles:
+                fn.view_permissions.append((True, role_checker))
+            else:
+                fn.view_permissions.append((False, role_checker))
+
         return fn
     return wrapped
 
 
 def disallowed(*roles):
     def wrapped(fn):
-        fn.view_permissions = roles  # TODO: Extend this to have a conventional form
+        role_checkers = parsing.load_roles()
+
+        # Check first roles are valid
+        for r in roles:
+            if r not in role_checkers:
+                raise exceptions.Misconfigured(f"Invalid role '{r}'")
+
+        fn.view_permissions = []
+        for role, role_checker in role_checkers.items():
+            if role in roles:
+                fn.view_permissions.append((False, role_checker))
+            else:
+                fn.view_permissions.append((True, role_checker))
+
         return fn
     return wrapped
 
