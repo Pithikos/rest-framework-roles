@@ -14,6 +14,7 @@ from django.conf import settings
 from django.utils.functional import empty
 
 from rest_framework_roles.permissions import check_permissions
+from rest_framework_roles.exceptions import Misconfigured
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +28,6 @@ DJANGO_CLASS_VIEWS = {
     'options',
     'trace',
 }
-
-
-
-class Misconfigured(Exception):
-    pass
 
 
 def is_django_configured():

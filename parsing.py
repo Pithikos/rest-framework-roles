@@ -42,12 +42,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.module_loading import import_string
 
-from .decorators import DEFAULT_COST
-from .utils import dotted_path
-
-
-class InvalidConfiguration(Exception):
-    pass
+import decorators
 
 
 def validate_config(config):
@@ -72,10 +67,13 @@ def load_config(dotted_path=None):
     return config
 
 
-def load_roles(config):
+def load_roles(config=None):
     """
     Load roles (we only check at settings file)
     """
+    if not config:
+        from django.conf import settings
+        config = settings.REST_FRAMEWORK_ROLES
     roles = config['roles']
     if isinstance(roles, str):
         roles = import_string(roles)
@@ -85,6 +83,9 @@ def load_roles(config):
 def parse_roles(roles_dict):
     """
     Parses given roles to a common structure that can be used for building the lookup
+
+    Args:
+        roles_dict: A dict where key is identifier of role, and value is a role_checker
 
     Output example:
     {
@@ -103,7 +104,7 @@ def parse_roles(roles_dict):
         try:
             cost = role_checker.cost
         except AttributeError:
-            cost = DEFAULT_COST
+            cost = decorators.DEFAULT_COST
             role_checker.cost = cost
         d[role_name]['role_checker_cost'] = cost
     return d
@@ -129,7 +130,7 @@ def parse_view_permissions(view_permissions, roles=None):
     """
     lookup = {}
     if not roles:
-        roles = load_roles(config=settings.REST_FRAMEWORK_ROLES)
+        roles = load_roles()
     roles = parse_roles(roles)
     assert type(view_permissions) is dict, f"Expected view_permissions to be dict. Got {view_permissions}"
 
