@@ -1,10 +1,5 @@
-# from unittest.mock import patch
-
-# import pytest
-# from django.test.utils import override_settings
-
 from ..roles import is_admin, is_user, is_anon
-from ..parsing import create_lookup, parse_roles, parse_permissions
+from ..parsing import parse_roles, parse_view_permissions
 from ..decorators import expensive, cheap
 
 
@@ -41,48 +36,6 @@ def test_parse_roles_cost():
 
 
 def test_parse_view_permissions():
-    permissions = [{
-        'view': 'myclassview',
-        'permissions': {
-            'admin': {
-                'myaction1': True,
-                'myaction2': True,
-                'myaction3': True,
-            },
-            'user': {
-                'myaction3': False,
-            }
-        },
-    }]
-    # Namely extend views to point to the actual views of the classes if
-    # needed
-    parsed = parse_permissions(permissions)
-    assert parsed == [
-        {
-            'view': 'myclassview.myaction1',
-            'permissions': {'admin': True}
-        },
-        {
-            'view': 'myclassview.myaction2',
-            'permissions': {'admin': True}
-        },
-        {
-            'view': 'myclassview.myaction3',
-            'permissions': {'admin': True, 'user': False},
-        }
-    ]
-
-def test_parse_function_views():
-    assert parse_permissions([{
-        'view': 'myfunctionview',
-        'permissions': {'admin': True}
-    }]) == [{
-        'view': 'myfunctionview',
-        'permissions': {'admin': True},
-    }]
-
-
-def test_create_lookup():
     is_not_updating_permissions = lambda v, r: True
     is_self = lambda v, r: True
 
@@ -92,27 +45,28 @@ def test_create_lookup():
         'anon': is_anon,
     }
 
-    permissions = [{
-      'view': 'authentication.views.UserViewSet',
-      'permissions': {
-        'admin': {
-          'create': True,
-          'retrieve': True,
-          'update': True,
-          'partial_update': True,
-          'me': True,
+    view_permissions = {
+        'authentication.views.UserViewSet.create': {
+            'admin': True,
+            'anon': False,
         },
-        'user': {
-          'update': True,
-          'partial_update': is_not_updating_permissions,
-          'retrieve': is_self,
-          'me': True,
+        'authentication.views.UserViewSet.retrieve': {
+            'admin': True,
+            'user': is_self,
         },
-        'anon': {
-          'create': False,
-        }
-      }
-    }]
+        'authentication.views.UserViewSet.update': {
+            'admin': True,
+            'user': True,
+        },
+        'authentication.views.UserViewSet.partial_update': {
+            'admin': True,
+            'user': is_not_updating_permissions,
+        },
+        'authentication.views.UserViewSet.me': {
+            'admin': True,
+            'user': True,
+        },
+    }
 
     expected = {
         'authentication.views.UserViewSet.create': [
@@ -136,7 +90,7 @@ def test_create_lookup():
             (True, is_user),
         ]
     }
-    outcome = create_lookup(roles, permissions)
+    outcome = parse_view_permissions(view_permissions, roles)
     assert outcome == expected
 
 
@@ -156,68 +110,17 @@ def test_rules_sorted_by_cost():
         'expensivo': is_expensivo,
     }
 
-    permissions = [
-        {
-          'view': 'authentication.views.UserViewSet',
-          'permissions': {
-            'admin': {'create': True},
-            'expensivo': {'create': True},
-            'cheapo': {'create': True},
-          }
-        }
-    ]
+    permissions = {
+      'authentication.views.UserViewSet.create': {
+        'admin': True,
+        'expensivo': True,
+        'cheapo': True,
+      }
+    }
 
-    lookup = create_lookup(roles, permissions)
+    lookup = parse_view_permissions(permissions, roles)
     assert lookup == {
         'authentication.views.UserViewSet.create': [
             (True, is_cheapo), (True, is_admin), (True, is_expensivo)
         ]
     }
-
-# @mock.patch('authentication.models.USER_PAYPLANS', USER_PAYPLANS)
-# @mock.patch('authentication.models.USER_PERMISSIONS_SCHEMA', USER_PERMISSIONS_SCHEMA)
-# def test_parsing():
-    # permissions = [
-    #     {
-    #         'model': 'fileshare.models.User',
-    #         'permissions': [
-    #             {
-    #                 'role': 'owner',
-    #                 '__all__': True,
-    #             },
-    #             {
-    #                 'role': 'anonymous',
-    #                 'create': True,
-    #                 'customaction': True,
-    #             },
-    #             {
-    #                 'role': 'user',
-    #                 'list': True,
-    #                 'retrieve': True,
-    #             }
-    #         ],
-    #     }
-    # ]
-    # expected = {
-    #     'authentication.models.User': {
-    #         'owner': {
-    #             '__all__': True,
-    #         },
-    #         'anon': {
-    #             'list': False,
-    #             'retrieve': False,
-    #             'create': True,
-    #             'partial_update': False,
-    #             'update': False,
-    #             'destroy': False,
-    #             'customaction': True,
-    #         },
-    #         'user': {
-    #             'list': True,
-    #             'retrieve': True,
-    #             'create': False,
-    #             'partial_update': False,
-    #             'update': False,
-    #             'destroy': False,
-    #         },
-    # }

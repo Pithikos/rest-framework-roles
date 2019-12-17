@@ -1,3 +1,41 @@
+"""
+PREPARSED
+
+view_settings can be part of the body in a class or as a global setting. The
+only difference is that in the latter, you need to specify full module paths.
+
+
+settings style:
+{
+    'myapp.views.MyModel.myview': {
+        'admin': True,
+        'user': False,
+    }
+}
+
+class-based view_settings:
+{
+    'myview': {
+        'admin': True,
+        'user': False,
+    }
+}
+
+POSTPARSED
+
+In all cases we get a lookup table where the permissions have been converted
+to a permission list. For this the conversion makes use of the ROLES setting.
+
+E.g.
+
+{
+    'myview': [
+        (True, is_admin),
+        (False, is_user),
+    ]
+}
+"""
+
 import importlib
 
 from django.conf import settings
@@ -44,35 +82,18 @@ def load_roles(config):
     return roles
 
 
-def load_view_permissions(config, urlconf=None):
-    """
-    Load view permissions
-    """
-    # Check first at settings file
-    view_permissions = config['view_permissions']
-    if isinstance(view_permissions, str):
-        view_permissions = import_string(view_permissions)
-
-    # Get view permissions from classes
-    from .patching import get_urlpatterns, get_view_class
-    urlpatterns = get_urlpatterns(urlconf)
-    for pattern in urlpatterns:
-        cls = get_view_class(pattern.callback)
-        new_rule = parse_permissions([{
-            'view': dotted_path(cls),
-            'permissions': cls.view_permissions,
-        }])[0]
-        view_permissions.append(new_rule)
-
-    # Call one last time to sort and merge rules
-    view_permissions = parse_permissions(view_permissions)
-
-    return view_permissions
-
-
 def parse_roles(roles_dict):
     """
     Parses given roles to a common structure that can be used for building the lookup
+
+    Output example:
+    {
+        'admin': {
+            'role_name': 'admin',
+            'role_checker': is_admin,
+            'role_checker_cost': 50,
+        }
+    }
     """
     d = {}
     for role_name, role_checker in roles_dict.items():
@@ -88,75 +109,13 @@ def parse_roles(roles_dict):
     return d
 
 
-def parse_permissions(view_permissions, merge_same_views=True):
-    """
-    Parses permissions to a uniform more verbose format
-
-    Args:
-        merge_same_views(bool): Merge rules for the same views
-    """
-
-    # Deconstruct concise syntax for class-based views
-    for i, rule in enumerate(view_permissions):
-        view = rule['view']
-        permissions = rule['permissions']
-        new_rules = []
-        for role_name, unknown in permissions.items():
-            if isinstance(unknown, dict):
-                for method_name, granted in unknown.items():
-                    new_rule = {
-                        'view': f"{view}.{method_name}",
-                        'permissions': {role_name: granted},
-                    }
-                    new_rules.append(new_rule)
-        if new_rules:
-            for new_rule in reversed(new_rules):
-                view_permissions.insert(i+1, new_rule)
-            del view_permissions[i]
-
-    # Merge rules for same views
-    if merge_same_views:
-        new_view_permissions = []
-        all_views = [rule['view'] for rule in view_permissions]
-        added = set()
-
-        for i, rule in enumerate(view_permissions):
-            if rule['view'] in added:
-                continue
-            indice = [j for j, r in enumerate(view_permissions) if r['view'] == rule['view']]
-            if len(indice) > 1:
-                permissions_to_combine = [view_permissions[j]['permissions'] for j in indice]
-
-                # Check for duplicates
-                role_names = []
-                for d in permissions_to_combine:
-                    role_names.extend(d.keys())
-                for role_name in role_names:
-                    if role_names.count(role_name) > 1:
-                        raise InvalidConfiguration(f'You have set permissions for {role_name} more than once')
-
-                permissions_combined = {}
-                for d in permissions_to_combine:
-                    permissions_combined.update(d)
-
-                new_view_permissions.append({
-                    'view': rule['view'],
-                    'permissions': permissions_combined,
-                })
-                added.add(rule['view'])
-            else:
-                new_view_permissions.append(rule)
-        view_permissions = new_view_permissions
-
-    return view_permissions
-
-
-def create_lookup(roles, view_permissions):
+def parse_view_permissions(view_permissions, roles=None):
     """
     Transform all configuration into a lookup table to be used for permission checking
 
     Args:
         roles(list): A list of str or role checking
+        view_permissions(dict): E.g. {'view': 'myview', 'permissions':[]}
 
     Output example:
         {
@@ -169,17 +128,16 @@ def create_lookup(roles, view_permissions):
         }
     """
     lookup = {}
+    if not roles:
+        roles = load_roles(config=settings.REST_FRAMEWORK_ROLES)
     roles = parse_roles(roles)
-    view_permissions = parse_permissions(view_permissions)
+    assert type(view_permissions) is dict, f"Expected view_permissions to be dict. Got {view_permissions}"
 
-    for view_rule in view_permissions:
-        view = view_rule['view']
-        permissions = view_rule['permissions']
-        lookup[view] = []
-
+    for view_name, permissions in view_permissions.items():
         # Populate general and instance checkers
+        lookup[view_name] = []
         for role, granted in permissions.items():
-            lookup[view].append((
+            lookup[view_name].append((
                 granted,
                 roles[role]['role_checker'],
             ))
