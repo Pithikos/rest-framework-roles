@@ -116,7 +116,8 @@ def parse_view_permissions(view_permissions, roles=None):
     Transform all configuration into a lookup table to be used for permission checking
 
     Args:
-        roles(list): A list of str or role checking
+        roles(dict): Dict where key is the role name and value is a dict with
+                     role attributes
         view_permissions(dict): E.g. {'view': 'myview', 'permissions':[]}
 
     Output example:
@@ -134,9 +135,19 @@ def parse_view_permissions(view_permissions, roles=None):
         roles = load_roles()
     roles = parse_roles(roles)
     assert type(view_permissions) is dict, f"Expected view_permissions to be dict. Got {view_permissions}"
+    assert type(roles) is dict, f"Expected roles to be dict. Got {roles}"
 
+    # Check roles in permissions are correct before continuing
+    roles_in_view_permissions = set()
+    for permissions in view_permissions.values():
+        for role in permissions.keys():
+            roles_in_view_permissions.add(role)
+    for role in roles_in_view_permissions:
+        if role not in roles:
+            raise Misconfigured(f"Role '{role}' given but such role not defined")
+
+    # Populate general and instance checkers
     for view_name, permissions in view_permissions.items():
-        # Populate general and instance checkers
         lookup[view_name] = []
         for role, granted in permissions.items():
             lookup[view_name].append((
