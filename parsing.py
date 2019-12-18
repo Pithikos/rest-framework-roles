@@ -46,34 +46,34 @@ import decorators
 
 
 def validate_config(config):
-    required_keys = ['view_permissions']
-    for k in required_keys:
-        if k not in config:
-            raise ImproperlyConfigured(f"Missing required setting '{k}'")
+    if 'roles' not in config:
+        raise ImproperlyConfigured("Missing 'roles'")
+    if 'view_permissions' not in config:
+        raise ImproperlyConfigured("Missing 'view_permissions'")
 
 
-def load_config(dotted_path=None):
-    KEY_NAME = 'REST_FRAMEWORK_ROLES'
-    if not dotted_path:
-        config = getattr(settings, KEY_NAME)
-    else:
-        mod = import_string(dotted_path)
-        config = getattr(mod, KEY_NAME)
-
-        config['roles'] = load_roles(config)
-        config['view_permissions'] = load_view_permissions(config)
-
-    validate_config(config)
-    return config
-
-
-def load_roles(config=None):
+def load_view_permissions(config=None):
     """
-    Load roles (we only check at settings file)
+    Load view permissioins from config
     """
     if not config:
         from django.conf import settings
         config = settings.REST_FRAMEWORK_ROLES
+    validate_config(config)
+    view_permissions = config['view_permissions']
+    if isinstance(view_permissions, str):
+        view_permissions = import_string(view_permissions)
+    return view_permissions
+
+
+def load_roles(config=None):
+    """
+    Load roles from config
+    """
+    if not config:
+        from django.conf import settings
+        config = settings.REST_FRAMEWORK_ROLES
+    validate_config(config)
     roles = config['roles']
     if isinstance(roles, str):
         roles = import_string(roles)
