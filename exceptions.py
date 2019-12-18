@@ -4,3 +4,7 @@ class InvalidConfiguration(Exception):
 
 class Misconfigured(Exception):
     pass
+
+
+class DoublePatching(Exception):
+    pass

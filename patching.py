@@ -121,9 +121,8 @@ def patch(urlconf=None):
     # Populate view_table
     for pattern in get_urlpatterns(urlconf):
 
-        # Skip already patched by decorator
-        # if pattern.callback.__qualname__.startswith('before_view.'):
-        #     continue
+        if pattern.callback.__qualname__.startswith('before_view.'):
+            raise exceptions.DoublePatching(f"View is already patched: {pattern.callback}")
 
         # Handle class-based views
         if is_method_view(pattern.callback):

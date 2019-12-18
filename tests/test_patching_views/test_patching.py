@@ -1,8 +1,6 @@
-import importlib
 from unittest import mock
 
-import pytest
-from django.urls import get_resolver
+from django.http import HttpResponse
 from django.test import RequestFactory
 
 from .test_patching_django import DjangoView
@@ -10,15 +8,12 @@ from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view_dec
 from .test_patching_rest import urlpatterns as rest_urlpatterns
 from .test_patching_django import django_function_view_decorated, django_function_view_undecorated
 from .test_patching_django import urlpatterns as django_urlpatterns
-from patching import is_method_view, get_view_class, patch, before_view, is_rest_function_view
+from patching import is_method_view, get_view_class, before_view, is_rest_function_view
+
+# NOTE: Do not patch in this module. It will double-patch and give an error.
 
 
 urlpatterns = django_urlpatterns + rest_urlpatterns
-
-urlconf = importlib.import_module(__name__)
-patch(urlconf)
-resolver = get_resolver(urlconf)
-
 
 def get_pattern(name):
     for pattern in urlpatterns:
@@ -59,10 +54,10 @@ def test_get_view_class():
 
 
 def test_check_permissions_is_called_by_before_view():
-    url = '/django_function_view_decorated'
-    match = resolver.resolve(url)
-    request = RequestFactory().get(url)
+    view = lambda r: HttpResponse(status=200)
+    request = RequestFactory().get('')
+    patched_view = before_view(view)
     with mock.patch('patching.check_permissions') as mocked_check_permissions:
-        response = match.func(request)
+        response = patched_view(request)
         assert response.status_code == 200
         assert mocked_check_permissions.called

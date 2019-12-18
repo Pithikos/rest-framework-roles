@@ -1,10 +1,7 @@
 import importlib
-from unittest.mock import patch
-from unittest import mock
 
 import pytest
 from django.urls import get_resolver
-from rest_framework.test import APIRequestFactory
 from django.contrib.auth.models import User
 from django.urls import path
 from django.http import HttpResponse
@@ -13,7 +10,7 @@ import rest_framework as drf
 
 import patching
 from decorators import allowed
-from ..utils import UserSerializer, _func_name, dummy_view, is_patched
+from ..utils import UserSerializer, _func_name, is_patched
 
 
 # -------------------------------- Setup app -----------------------------------
@@ -81,27 +78,30 @@ urlpatterns = [
 # ------------------------------------------------------------------------------
 
 
-urlconf = importlib.import_module(__name__)
-patching.patch(urlconf)
-resolver = get_resolver(urlconf)
+@pytest.fixture(scope='session')
+def rest_resolver():
+    urlconf = importlib.import_module(__name__)
+    patching.patch(urlconf)
+    resolver = get_resolver(urlconf)
+    return resolver
 
 
-def test_function_views_patched():
+def test_function_views_patched(rest_resolver):
     # Although REST Framework end up being methods, we treat them similarly
     # to Django vanilla views. This is due to although being methods, the meta-
     # programmatically generated classes are missing the function as method.
-    match = resolver.resolve('/rest_function_view_decorated')
+    match = rest_resolver.resolve('/rest_function_view_decorated')
     assert is_patched(match.func.cls.get)
     assert is_patched(match.func.cls.post)
 
     # Views used in urlpatterns but not explicitly given permissions..
-    match = resolver.resolve('/rest_function_view_undecorated')
+    match = rest_resolver.resolve('/rest_function_view_undecorated')
     assert not is_patched(match.func.cls.get)
     assert not is_patched(match.func.cls.post)
 
 
-def test_method_views_patched_with_directives_only():
-    match = resolver.resolve('/rest_class_view')
+def test_method_views_patched_with_directives_only(rest_resolver):
+    match = rest_resolver.resolve('/rest_class_view')
     cls = match.func.view_class  # => Normal class with corresponding method
     assert not is_patched(cls.get)
     assert not is_patched(cls.view_unpatched)
@@ -110,6 +110,6 @@ def test_method_views_patched_with_directives_only():
     assert is_patched(cls.view_patched_by_decorator)
     assert is_patched(cls.action_patched_by_decorator)
 
-    match = resolver.resolve('/rest_class_viewset')
+    match = rest_resolver.resolve('/rest_class_viewset')
     cls = match.func.cls  # NOTE THE DIFFERENCE: We use cls instead of view_class
     assert is_patched(cls.list)

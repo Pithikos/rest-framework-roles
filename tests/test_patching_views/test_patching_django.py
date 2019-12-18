@@ -1,10 +1,8 @@
 import importlib
-from unittest.mock import patch
 
 import pytest
 import django
 from django.urls import get_resolver
-from django.test import RequestFactory
 from django.contrib.auth.models import User
 from django.urls import path
 from django.http import HttpResponse
@@ -61,23 +59,26 @@ urlpatterns = [
 # ------------------------------------------------------------------------------
 
 
-urlconf = importlib.import_module(__name__)
-patching.patch(urlconf)
-resolver = get_resolver(urlconf)
+@pytest.fixture(scope='session')
+def django_resolver():
+    urlconf = importlib.import_module(__name__)
+    patching.patch(urlconf)
+    resolver = get_resolver(urlconf)
+    return resolver
 
 
-def test_function_views_patched_regardless_of_directives():
+def test_function_views_patched_regardless_of_directives(django_resolver):
     # Normally we patch only views that are targeted by directives (e.g. decorators).
     # Vanilla Django function views are the exception, and are patched directly
     # regardless, in order to simplify things.
-    match = resolver.resolve('/django_function_view_decorated')
+    match = django_resolver.resolve('/django_function_view_decorated')
     assert is_patched(match.func)
-    match = resolver.resolve('/django_function_view_undecorated')
+    match = django_resolver.resolve('/django_function_view_undecorated')
     assert not is_patched(match.func)
 
 
-def test_method_views_patched_with_directives_only():
-    match = resolver.resolve('/django_class_view')
+def test_method_views_patched_with_directives_only(django_resolver):
+    match = django_resolver.resolve('/django_class_view')
     cls = match.func.view_class
 
     assert not is_patched(cls.view_unpatched)
