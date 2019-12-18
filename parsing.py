@@ -39,17 +39,18 @@ E.g.
 import importlib
 
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 from django.utils.module_loading import import_string
+import django.core.exceptions as django_exceptions
 
+from exceptions import Misconfigured
 import decorators
 
 
 def validate_config(config):
     if 'roles' not in config:
-        raise ImproperlyConfigured("Missing 'roles'")
+        raise django_exceptions.ImproperlyConfigured("Missing 'roles'")
     if 'view_permissions' not in config:
-        raise ImproperlyConfigured("Missing 'view_permissions'")
+        raise django_exceptions.ImproperlyConfigured("Missing 'view_permissions'")
 
 
 def load_view_permissions(config=None):
