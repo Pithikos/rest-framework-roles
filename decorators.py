@@ -9,6 +9,9 @@ DEFAULT_COST = DEFAULT_CHEAP
 
 
 def allowed(*roles):
+    """
+    Allow only given roles to access view. Any other roles will be denied access.
+    """
     def wrapped(fn):
         role_checkers = parsing.load_roles()
 
@@ -29,6 +32,9 @@ def allowed(*roles):
 
 
 def disallowed(*roles):
+    """
+    Deny access for given roles. Any other roles will be allowed access.
+    """
     def wrapped(fn):
         role_checkers = parsing.load_roles()
 

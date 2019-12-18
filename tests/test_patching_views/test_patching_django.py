@@ -31,8 +31,8 @@ class DjangoView(django.views.generic.ListView):
     model = User
 
     view_permissions = {
-        'admin': {
-            'view_patched_by_view_permissions': True,
+        'view_patched_by_view_permissions': {
+            'admin': True,
         }
     }
 
@@ -73,7 +73,7 @@ def test_function_views_patched_regardless_of_directives():
     match = resolver.resolve('/django_function_view_decorated')
     assert is_patched(match.func)
     match = resolver.resolve('/django_function_view_undecorated')
-    assert is_patched(match.func)
+    assert not is_patched(match.func)
 
 
 def test_method_views_patched_with_directives_only():

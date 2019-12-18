@@ -6,10 +6,11 @@ from django.urls import get_resolver
 from django.test import RequestFactory
 
 from .test_patching_django import DjangoView
-from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view
-from .test_patching_django import urlpatterns as django_urlpatterns
+from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view_decorated, rest_function_view_undecorated
 from .test_patching_rest import urlpatterns as rest_urlpatterns
-from patching import is_method_view, get_view_class, patch, before_view
+from .test_patching_django import django_function_view_decorated, django_function_view_undecorated
+from .test_patching_django import urlpatterns as django_urlpatterns
+from patching import is_method_view, get_view_class, patch, before_view, is_rest_function_view
 
 
 urlpatterns = django_urlpatterns + rest_urlpatterns
@@ -35,10 +36,23 @@ def test_is_method_view():
             assert is_method_view(pattern.callback)
 
 
+def test_is_rest_function_view():
+    assert is_rest_function_view(rest_function_view_decorated)
+    assert is_rest_function_view(rest_function_view_undecorated)
+
+    assert not is_rest_function_view(django_function_view_decorated)
+    assert not is_rest_function_view(django_function_view_undecorated)
+    assert not is_rest_function_view(RestAPIView.view_unpatched)
+    assert not is_rest_function_view(RestAPIView.get)
+    assert not is_rest_function_view(DjangoView.as_view())
+    assert not is_rest_function_view(RestAPIView.as_view())
+
+
 def test_get_view_class():
     assert get_view_class(DjangoView.as_view()) == DjangoView
     assert get_view_class(RestAPIView.as_view()) == RestAPIView
-    assert get_view_class(rest_function_view).__qualname__ == 'WrappedAPIView'
+    assert get_view_class(rest_function_view_decorated).__qualname__ == 'WrappedAPIView'
+    assert get_view_class(rest_function_view_undecorated).__qualname__ == 'WrappedAPIView'
 
     assert get_view_class(RestViewSet.as_view({'get': 'list'})) == RestViewSet
     assert get_view_class(RestViewSet.as_view({'get': 'custom_view'})) == RestViewSet
@@ -52,46 +66,3 @@ def test_check_permissions_is_called_by_before_view():
         response = match.func(request)
         assert response.status_code == 200
         assert mocked_check_permissions.called
-
-
-@pytest.mark.urls(__name__)
-def test_before_view_patched_in_all_cases():
-    """ before_view must always be called regardless how we define permissions """
-    patch()
-
-
-    # For Django functions it is patched directly at URL resolution level
-    assert 'before_view' in str(get_pattern('django_function_view').callback)
-
-    # For everything else the views are patched at the class level
-    class_based_patterns = [
-        get_pattern('django_class_view'),
-        # get_pattern('rest_function_view'),
-        # get_pattern('rest_class_view'),
-        # get_pattern('rest_class_viewset'),
-        # get_pattern('rest_class_viewset/custom_view'),
-    ]
-    for pattern in class_based_patterns:
-        assert 'before_view' not in str(pattern.callback)
-        cls = pattern.callback.view_class
-
-        import IPython; IPython.embed(using=False)
-
-
-
-
-
-
-
-
-
-    # import IPython; IPython.embed(using=False)
-    # urlconf = importlib.import_module(__name__)
-    # resolver = get_resolver(urlconf)
-    #
-    # match = resolver.resolve('/django_function_view')
-    #
-    #
-    # match = self.resolver.resolve('/django_class_view')
-    # cls = match.func.view_class
-    # assert cls.get.__qualname__.startswith('class_view_wrapper')

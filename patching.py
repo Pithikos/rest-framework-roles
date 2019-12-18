@@ -14,11 +14,12 @@ from django.conf import settings
 from django.utils.functional import empty
 
 from rest_framework_roles.permissions import check_permissions
+from rest_framework_roles.parsing import parse_view_permissions
 from rest_framework_roles.exceptions import Misconfigured
 
 logger = logging.getLogger(__name__)
 
-DJANGO_CLASS_VIEWS = {
+HTTP_VERBS = {
     'get',
     'post',
     'put',
@@ -93,6 +94,18 @@ def get_view_class(callback):
     return cls
 
 
+def is_rest_function_view(callback):
+    # REST functions end up being methods after metaprogramming
+    return is_method_view(callback) and callback.__qualname__ == 'WrappedAPIView'
+
+
+def create_permission_table(urlpatterns):
+    """
+    Creates a table where keys are views and values are permissions
+    """
+    pass
+
+
 def patch(urlconf=None):
     """
     Entrypoint for all patching (after configurations have loaded)
@@ -102,62 +115,65 @@ def patch(urlconf=None):
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
     """
-    class_patterns = []
-    function_patterns = []
-    _all_patterns = get_urlpatterns(urlconf)
-    for pattern in _all_patterns:
+
+    view_table = []  # list of (<pattern>, <viewname>, <class>, <view>, <permissions>)
+
+    # Populate view_table
+    for pattern in get_urlpatterns(urlconf):
+
+        # Skip already patched by decorator
+        # if pattern.callback.__qualname__.startswith('before_view.'):
+        #     continue
+
+        # Handle class-based views
         if is_method_view(pattern.callback):
-            class_patterns.append(pattern)
-        else:
-            function_patterns.append(pattern)
+            cls = get_view_class(pattern.callback)
 
-    # Patch simple function views directly
-    for pattern in function_patterns:
-        pattern.callback = before_view(pattern.callback)
+            # attached view_permissions to class
+            if hasattr(cls, 'view_permissions'):
+                view_permissions = parse_view_permissions(cls.view_permissions)
+                for view_name, permissions in view_permissions.items():
+                    if hasattr(cls, view_name):
+                        view = getattr(cls, view_name)
+                        view_table.append((pattern, view_name, cls, view, view_permissions))
+                    else:
+                        raise Misconfigured(f"Specified view '{view_name}' in view_permissions for class '{cls.__name__}' but class has no such method")
 
-    # Patch class based methods
-    for pattern in class_patterns:
-        cls = get_view_class(pattern.callback)
-        views = []  # ..for patching
+            # TODO: Also look in settings.
+            pass
 
-        # Find views by directive: view_permissions
-        if hasattr(cls, 'view_permissions'):
-            for d in cls.view_permissions.values():
-                for view_name in d.keys():
+            # REST decorated methods
+            for resource_name in dir(cls):
+                resource = getattr(cls, resource_name)
+                if hasattr(resource, 'view_permissions'): # == it was decorated
+                    view_table.append((pattern, resource_name, cls, resource, resource.view_permissions))
+
+            # REST functions
+            if is_rest_function_view(pattern.callback) and hasattr(pattern.callback, 'view_permissions'):
+                cls = pattern.callback.cls
+                for view_name in HTTP_VERBS:
                     if not hasattr(cls, view_name):
-                        raise Misconfigured(f"Class '{cls.__name__}' has no method {view_name}")
-                    views.append(view_name)
+                        continue
+                    # NOTE: For some reason cls.get == cls.post
+                    view = getattr(cls, view_name)
+                    view_table.append((pattern, view_name, cls, view, pattern.callback.view_permissions))
 
-        # Find views by directive: decorators
-        for resource_name in dir(cls):
-            resource = getattr(cls, resource_name)
-            if hasattr(resource, 'view_permissions'):
-                views.append(resource_name)
+        # Handle vanilla function views
+        elif hasattr(pattern.callback, 'view_permissions'):
+            view = pattern.callback
+            view_table.append((pattern, view.__name__, None, view, view.view_permissions))
 
-        # Special case: Find REST views. These are annoying since they behave like nothing else.
-        # TODO: Figure out the flow of this..
-        #    1. Check if it is a REST function
-        #    2. Patch all common methods available (get, post, etc.). This is OK
-        #       since if it's a function then there will not be any custom method.
-        #    3. Issue: We can't get the view name for use with PERMISSIONS_REGISTRY
-        #       Solution: Patch the permission checking directly here
-        #
-        #  Redesign note
-        #  -------------
-        #
-        #  Don't use PERMISSIONS_REGISTRY. Instead for every view with a directive
-        #  do the below:
-        #    1. Attach view_permissions directly to the view function
-        #    2. Monkey patch view with before_view
-        #    3. before_view will always make use of view.view_permissions when
-        #       determining permissions.
-        if hasattr(pattern.callback, '__wrapped__') and hasattr(pattern.callback, 'view_permissions'):
-            import IPython; IPython.embed(using=False)
+        else:
+            # Vanilla undecorated function - do nothing
+            pass
 
-        # Perform patching
-        for view_name in views:
-            original_view = getattr(cls, view_name)
-            setattr(cls, view_name, before_view(original_view))
+    # Perform patching
+    for pattern, view_name, cls, view, view_permissions in view_table:
+        view.view_permissions = permissions
+        if cls:
+            setattr(cls, view_name, before_view(view))
+        else:
+            pattern.callback = before_view(view)
 
 
 def get_urlpatterns(urlconf=None):
@@ -166,6 +182,21 @@ def get_urlpatterns(urlconf=None):
     assert type(urlconf) != str, f"URLConf should not be string. Got '{urlconf}'"
     url_patterns = list(iter_urlpatterns(urlconf.urlpatterns))
     return url_patterns
+
+    function_patterns = []
+    _all_patterns = get_urlpatterns(urlconf)
+    for pattern in _all_patterns:
+        if is_method_view(pattern.callback):
+            class_patterns.append(pattern)
+        else:
+            function_patterns.append(pattern)
+    function_patterns = []
+    _all_patterns = get_urlpatterns(urlconf)
+    for pattern in _all_patterns:
+        if is_method_view(pattern.callback):
+            class_patterns.append(pattern)
+        else:
+            function_pa
 
 
 def iter_urlpatterns(urlpatterns):
