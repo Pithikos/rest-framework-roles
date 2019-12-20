@@ -1,16 +1,19 @@
 import importlib
+from unittest.mock import patch
 
 import pytest
 from django.urls import get_resolver
 from django.contrib.auth.models import User
-from django.urls import path
+from django.urls import path, include
 from django.http import HttpResponse
-from rest_framework import permissions, viewsets, views, decorators
+from rest_framework import permissions, viewsets, views, decorators, generics, mixins, routers
 import rest_framework as drf
+from rest_framework.test import APIClient
 
 import patching
 from decorators import allowed
 from ..utils import UserSerializer, _func_name, is_patched
+from ..fixtures import request_factory
 
 
 # -------------------------------- Setup app -----------------------------------
@@ -63,6 +66,29 @@ class RestViewSet(drf.viewsets.ViewSet):
         return HttpResponse(_func_name())
 
 
+class RestClassMixed(drf.mixins.RetrieveModelMixin, drf.generics.GenericAPIView):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    view_permissions = {'retrieve': {'admin': True}}
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+
+class RestClassModel(drf.viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    view_permissions = {
+        'retrieve': {'admin': True},
+        'create': {'admin': False},
+        'list': {'admin': False},
+    }
+
+    # def check_permissions(self, request):
+    #     import IPython; IPython.embed(using=False)
+router = drf.routers.DefaultRouter()
+router.register(r'users', RestClassModel, basename='user')
+
+
 urlpatterns = [
     # Rest functions end up being methods to a class
     path('rest_function_view_decorated', rest_function_view_decorated),
@@ -73,6 +99,10 @@ urlpatterns = [
 
     # Similar to functions
     path('rest_class_viewset', RestViewSet.as_view({'get': 'list'})),
+
+    # Etc..
+    path('rest_class_mixed', RestClassMixed.as_view()),
+    path('', include(router.urls)),
 ]
 
 # ------------------------------------------------------------------------------
@@ -113,3 +143,34 @@ def test_method_views_patched_with_directives_only(rest_resolver):
     match = rest_resolver.resolve('/rest_class_viewset')
     cls = match.func.cls  # NOTE THE DIFFERENCE: We use cls instead of view_class
     assert is_patched(cls.list)
+
+
+def test_not_doublepatching_views(rest_resolver):
+    # REST Framework essentially redirects classic Django views to a higher level
+    # interface. e.g. self.get -> self.retrieve
+    #
+    # We need to ensure that only the specified views get patched and nothing more
+    # for classes.
+    match = rest_resolver.resolve('/rest_class_mixed')
+    cls = match.func.view_class
+    assert cls.get
+    assert cls.retrieve
+    assert not is_patched(cls.get)
+    assert is_patched(cls.retrieve)
+
+
+@pytest.mark.urls(__name__)
+def test_instance(rest_resolver):
+    # This test mainly demonstrates the underworkings of REST Framework and to
+    # not consider the behaviour as a bug.
+    def _test_instance(self, request):
+        # 'get' and 'list' are the same at this point since as_view(),
+        # populates the 'get' as a shortcut for 'list'.
+        assert self.get
+        assert self.list
+        assert is_patched(self.get)  # although not explicitly set perms
+        assert is_patched(self.list)
+        assert self.list == self.get
+        return HttpResponse()
+    with patch.object(RestClassModel, 'dispatch', new=_test_instance): # any method will do
+        APIClient().get('/users/')
