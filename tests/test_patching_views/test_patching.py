@@ -8,7 +8,7 @@ from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view_dec
 from .test_patching_rest import urlpatterns as rest_urlpatterns
 from .test_patching_django import django_function_view_decorated, django_function_view_undecorated
 from .test_patching_django import urlpatterns as django_urlpatterns
-from patching import is_method_view, get_view_class, before_view, is_rest_function_view
+from patching import is_callback_method, get_view_class, before_view, is_callback_rest_function
 
 # NOTE: Do not patch in this module. It will double-patch and give an error.
 
@@ -21,26 +21,30 @@ def get_pattern(name):
             return pattern
 
 
-def test_is_method_view():
+def test_is_callback_method():
     # We know that only django_function_view is not a method
     # For REST every view is a method, including decorated functions.
-    for pattern in urlpatterns:
-        if 'django_function_view' in str(pattern):
-            assert not is_method_view(pattern.callback)
-        else:
-            assert is_method_view(pattern.callback)
+    # import rest_framework
+    assert not is_callback_method(get_pattern('django_function_view_decorated').callback)
+    assert not is_callback_method(get_pattern('django_function_view_undecorated').callback)
+    assert is_callback_method(get_pattern('django_class_view').callback)
+    assert is_callback_method(get_pattern('rest_function_view_decorated').callback)
+    assert is_callback_method(get_pattern('rest_function_view_undecorated').callback)
+    assert is_callback_method(get_pattern('rest_class_view').callback)
+    assert is_callback_method(get_pattern('rest_class_viewset').callback)
+    assert is_callback_method(get_pattern('rest_class_mixed').callback)
 
 
-def test_is_rest_function_view():
-    assert is_rest_function_view(rest_function_view_decorated)
-    assert is_rest_function_view(rest_function_view_undecorated)
+def test_is_callback_rest_function():
+    assert is_callback_rest_function(rest_function_view_decorated)
+    assert is_callback_rest_function(rest_function_view_undecorated)
 
-    assert not is_rest_function_view(django_function_view_decorated)
-    assert not is_rest_function_view(django_function_view_undecorated)
-    assert not is_rest_function_view(RestAPIView.view_unpatched)
-    assert not is_rest_function_view(RestAPIView.get)
-    assert not is_rest_function_view(DjangoView.as_view())
-    assert not is_rest_function_view(RestAPIView.as_view())
+    assert not is_callback_rest_function(django_function_view_decorated)
+    assert not is_callback_rest_function(django_function_view_undecorated)
+    assert not is_callback_rest_function(RestAPIView.view_unpatched)
+    assert not is_callback_rest_function(RestAPIView.get)
+    assert not is_callback_rest_function(DjangoView.as_view())
+    assert not is_callback_rest_function(RestAPIView.as_view())
 
 
 def test_get_view_class():
@@ -56,7 +60,7 @@ def test_get_view_class():
 def test_check_permissions_is_called_by_before_view():
     view = lambda r: HttpResponse(status=200)
     request = RequestFactory().get('')
-    patched_view = before_view(view)
+    patched_view = before_view(view, is_method=False)
     with mock.patch('patching.check_permissions') as mocked_check_permissions:
         response = patched_view(request)
         assert response.status_code == 200

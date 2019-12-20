@@ -1,4 +1,5 @@
 from pytest import fixture
+from django.test import RequestFactory
 from django.contrib.auth.models import User, AnonymousUser
 
 
@@ -21,3 +22,8 @@ def admin(db):
         is_staff=True,
         is_superuser=True,
     )
+
+
+@fixture(scope='function')
+def request_factory():
+    return RequestFactory()

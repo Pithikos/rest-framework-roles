@@ -41,26 +41,29 @@ def is_rest_framework_loaded():
 
 # ------------------------------ Wrappers --------------------------------------
 
-def before_view(view):
+def before_view(view, is_method):
     """
     Main wrapper for views
+
+    Args:
+        is_method(bool): Tells if the view is class-based
 
     Ensures permissions are checked before calling the view
     """
 
-    def pre_view(request, view):
+    def pre_view(view, request):
         logger.debug('Checking permissions..')
-        check_permissions(request, view)
+        check_permissions(view, request)
 
     def wrapped_function(request, *args, **kwargs):
-        pre_view(request, view)
+        pre_view(view, request)
         return view(request, *args, **kwargs)
 
     def wrapped_method(self, request, *args, **kwargs):
-        pre_view(request, self)
+        pre_view(view, request)
         return view(self, request, *args, **kwargs)
 
-    if is_method_view(view):
+    if is_method:
         return wrapped_method
     else:
         return wrapped_function
@@ -69,7 +72,7 @@ def before_view(view):
 # ------------------------------------------------------------------------------
 
 
-def is_method_view(callback):
+def is_callback_method(callback):
     """
     Check if callback of pattern is a method
     """
@@ -89,21 +92,17 @@ def get_view_class(callback):
     """
     if hasattr(callback, 'view_class'):
         return callback.view_class
+    if hasattr(callback, 'cls'):
+        return callback.cls
+    # TODO: Below code seems to not do anything..
     mod = importlib.import_module(callback.__module__)
     cls = getattr(mod, callback.__name__)
     return cls
 
 
-def is_rest_function_view(callback):
+def is_callback_rest_function(callback):
     # REST functions end up being methods after metaprogramming
-    return is_method_view(callback) and callback.__qualname__ == 'WrappedAPIView'
-
-
-def create_permission_table(urlpatterns):
-    """
-    Creates a table where keys are views and values are permissions
-    """
-    pass
+    return is_callback_method(callback) and callback.__qualname__ == 'WrappedAPIView'
 
 
 def patch(urlconf=None):
@@ -125,7 +124,7 @@ def patch(urlconf=None):
             raise exceptions.DoublePatching(f"View is already patched: {pattern.callback}")
 
         # Handle class-based views
-        if is_method_view(pattern.callback):
+        if is_callback_method(pattern.callback):
             cls = get_view_class(pattern.callback)
 
             # attached view_permissions to class
@@ -148,7 +147,7 @@ def patch(urlconf=None):
                     view_table.append((pattern, resource_name, cls, resource, resource.view_permissions))
 
             # REST functions
-            if is_rest_function_view(pattern.callback) and hasattr(pattern.callback, 'view_permissions'):
+            if is_callback_rest_function(pattern.callback) and hasattr(pattern.callback, 'view_permissions'):
                 cls = pattern.callback.cls
                 for view_name in HTTP_VERBS:
                     if not hasattr(cls, view_name):
@@ -170,9 +169,16 @@ def patch(urlconf=None):
     for pattern, view_name, cls, view, view_permissions in view_table:
         view.view_permissions = permissions
         if cls:
-            setattr(cls, view_name, before_view(view))
+            before = before_view(view, is_method=True)
         else:
-            pattern.callback = before_view(view)
+            before = before_view(view, is_method=False)
+
+        before._view_permissions = permissions  # we attach permissions to before_view as well
+                                                # to make debugging easier
+        if cls:
+            setattr(cls, view_name, before)
+        else:
+            pattern.callback = before
 
 
 def get_urlpatterns(urlconf=None):
@@ -185,14 +191,14 @@ def get_urlpatterns(urlconf=None):
     function_patterns = []
     _all_patterns = get_urlpatterns(urlconf)
     for pattern in _all_patterns:
-        if is_method_view(pattern.callback):
+        if is_callback_method(pattern.callback):
             class_patterns.append(pattern)
         else:
             function_patterns.append(pattern)
     function_patterns = []
     _all_patterns = get_urlpatterns(urlconf)
     for pattern in _all_patterns:
-        if is_method_view(pattern.callback):
+        if is_callback_method(pattern.callback):
             class_patterns.append(pattern)
         else:
             function_pa
