@@ -1,8 +1,12 @@
 REST Framework Roles
 ====================
 
-Data-driven no-database permissions based on simple roles. The check occurs as
-middleware, decoupling permission and roles totally from your views.
+Role-based permissions that make sense.
+
+  - Decouple permission logic from views and models.
+  - Implementation agnostic. Permissions can utilize the database or be just a dict.
+  - Support for Django and REST Framework. Class-based views or functions.
+  - Support redirection without breaking permissions.
 
 
 Install
@@ -20,10 +24,43 @@ Usage
 Read on docs/usage.md
 
 
+REST Framework integration
+-------------------------------
+
+You can mix roles and REST permissions but there is a caveat. You **cannot** use
+`permission_classes` and `view_permissions` in the same class. This is because
+`permission_classes` target permissions for the whole class while `view_permissions`
+targets individual views.
+
+This will not work and you'll get an error
+
+    class MyViewSet():
+        permission_classes = (IsAdminUser,)
+
+        @allowed('admin')
+        def myview1(self, request):
+          pass
+
+This is fine
+
+    class MyViewSet():
+        permission_classes = (IsAdminUser,)
+        def myview(self, request):
+          pass
+
+    class MyOtherViewSet():
+        @allowed('admin')
+        def myview(self, request):
+          pass
+
+This also means that if no view permissions are defined, the defaults of REST Framework
+will be used.
+
 
 TODO
 ----
 
+* Determine if we should move REST's check_permissions inside before_view
 * Check is owner does not work for action 'me'
   - No pk passed
 * Allow setting action permission for specific field on partial updates.

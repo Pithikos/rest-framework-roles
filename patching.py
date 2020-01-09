@@ -12,6 +12,7 @@ from django.urls import resolve, get_resolver
 from django.urls.resolvers import URLPattern
 from django.conf import settings
 from django.utils.functional import empty
+from django.core.exceptions import PermissionDenied
 
 from rest_framework_roles.permissions import check_permissions
 from rest_framework_roles.parsing import parse_view_permissions
@@ -51,19 +52,29 @@ def before_view(view, is_method, original_check_permissions):
     Ensures permissions are checked before calling the view
     """
 
-    def pre_view(view, request):
+    def pre_view(self, view, request):
         logger.debug('Checking permissions..')
-        check_permissions(view, request)
+        granted = check_permissions(view, request)
+
+        # In case of not matching a role
+        if granted == None:
+            # TODO: For REST Framework use the check_permissions
+            if original_check_permissions:
+                original_check_permissions(self, request)
+            else:
+                raise PermissionDenied()
+
+        # In case of not granted permission
+        if granted == False:
+            raise PermissionDenied('Permission denied for user.')
+
 
     def wrapped_function(request, *args, **kwargs):
-        pre_view(view, request)
+        pre_view(None, view, request)
         return view(request, *args, **kwargs)
 
     def wrapped_method(self, request, *args, **kwargs):
-        pre_view(view, request)
-        # We call the original REST' check_permissions after our own
-        if original_check_permissions:
-            original_check_permissions(self, request)
+        pre_view(self, view, request)
         return view(self, request, *args, **kwargs)
 
     if is_method:
