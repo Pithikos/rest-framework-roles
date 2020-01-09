@@ -1,24 +1,4 @@
-import importlib
-
-from django.conf import settings
-
-
-USER_MODEL = None
-
-def load_user_model():
-    pkgpath = '.'.join(settings.AUTH_USER_MODEL.split('.')[:-1])
-    modelname = settings.AUTH_USER_MODEL.split('.')[-1]
-    modelsmod = importlib.import_module(pkgpath + '.models')
-    return getattr(modelsmod, modelname)
-
-
-def get_user_model():
-    # Get User model
-    global USER_MODEL
-    if USER_MODEL:
-        return USER_MODEL
-    USER_MODEL = load_user_model()
-    return USER_MODEL
+from django.contrib.auth import get_user_model
 
 
 def is_creator(view, request):
