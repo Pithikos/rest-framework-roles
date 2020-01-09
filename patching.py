@@ -41,7 +41,7 @@ def is_rest_framework_loaded():
 
 # ------------------------------ Wrappers --------------------------------------
 
-def before_view(view, is_method):
+def before_view(view, is_method, original_check_permissions):
     """
     Main wrapper for views
 
@@ -61,6 +61,9 @@ def before_view(view, is_method):
 
     def wrapped_method(self, request, *args, **kwargs):
         pre_view(view, request)
+        # We call the original REST' check_permissions after our own
+        if original_check_permissions:
+            original_check_permissions(self, request)
         return view(self, request, *args, **kwargs)
 
     if is_method:
@@ -109,7 +112,21 @@ def patch(urlconf=None):
     """
     Entrypoint for all patching (after configurations have loaded)
 
-    Essentially we look for the below
+    We construct a view_table that is used for the actual patching.
+    Below you can find the overall design on what patching does.
+
+    (Django patched)            (REST)                 (REST patched)
+      dispatch                 dispatch                   dispatch
+          |                       |                          |
+          |              REST check_permissions     REST check_permissions (mocked to do nothing)
+          |                       |                          |
+       pre_view                  view                    pre_view ------.
+          |                                                              |
+  check_permissions                                              check_permissions
+          |                                                              |
+          |                                                 REST check_permissions (original)
+          |                                                              |
+        view                                                view  -------'
 
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
@@ -119,21 +136,40 @@ def patch(urlconf=None):
 
     # Populate view_table
     for pattern in get_urlpatterns(urlconf):
-
         if pattern.callback.__qualname__.startswith('before_view.'):
             raise exceptions.DoublePatching(f"View is already patched: {pattern.callback}")
+
+        original_check_permissions = None  # Makes only sense for REST classes
 
         # Handle class-based views
         if is_callback_method(pattern.callback):
             cls = get_view_class(pattern.callback)
 
+            # Special treatment for REST. We shuffle the original check_permissions
+            # order so that it comes after our own and thus after the preview.
+            if hasattr(cls, 'check_permissions'):
+                original_check_permissions = cls.check_permissions
+
             # attached view_permissions to class
             if hasattr(cls, 'view_permissions'):
+
+                # if hasattr(cls, 'get_permissions'):
+                    # error_message = ''
+                    # if hasattr(cls, 'permission_classes'):
+                        # import IPython; IPython.embed(using=False)
+                        # error_message = f"Class '{cls.__name__}' has both 'permission_classes' and 'view_permissions'. "+\
+                                        # f"You need to choose one."
+                    # elif cls().get_permissions():
+                        # error_message = f"Class '{cls.__name__}' has both REST-type permissions and 'view_permissions'. "+\
+                                        # f"You need to choose one."
+                    # if error_message:
+                        # raise Misconfigured(error_message)
+
                 view_permissions = parse_view_permissions(cls.view_permissions)
                 for view_name, permissions in view_permissions.items():
                     if hasattr(cls, view_name):
                         view = getattr(cls, view_name)
-                        view_table.append((pattern, view_name, cls, view, view_permissions))
+                        view_table.append((pattern, view_name, cls, view, view_permissions, original_check_permissions))
                     else:
                         raise Misconfigured(f"Specified view '{view_name}' in view_permissions for class '{cls.__name__}' but class has no such method")
 
@@ -144,34 +180,43 @@ def patch(urlconf=None):
             for resource_name in dir(cls):
                 resource = getattr(cls, resource_name)
                 if hasattr(resource, 'view_permissions'): # == it was decorated
-                    view_table.append((pattern, resource_name, cls, resource, resource.view_permissions))
+                    view_table.append((pattern, resource_name, cls, resource, resource.view_permissions, original_check_permissions))
 
             # REST functions
             if is_callback_rest_function(pattern.callback) and hasattr(pattern.callback, 'view_permissions'):
                 cls = pattern.callback.cls
+
+                if hasattr(cls, 'check_permissions'):
+                    original_check_permissions = cls.check_permissions
+
                 for view_name in HTTP_VERBS:
                     if not hasattr(cls, view_name):
                         continue
                     # NOTE: For some reason cls.get == cls.post
                     view = getattr(cls, view_name)
-                    view_table.append((pattern, view_name, cls, view, pattern.callback.view_permissions))
+                    view_table.append((pattern, view_name, cls, view, pattern.callback.view_permissions, original_check_permissions))
 
         # Handle vanilla function views
         elif hasattr(pattern.callback, 'view_permissions'):
             view = pattern.callback
-            view_table.append((pattern, view.__name__, None, view, view.view_permissions))
+            view_table.append((pattern, view.__name__, None, view, view.view_permissions, original_check_permissions))
 
         else:
             # Vanilla undecorated function - do nothing
             pass
 
     # Perform patching
-    for pattern, view_name, cls, view, view_permissions in view_table:
+    for pattern, view_name, cls, view, view_permissions, original_check_permissions in view_table:
         view.view_permissions = permissions
+
+        # Ensure REST's check_permissions is always going to pass if called before before_view
+        if original_check_permissions:
+            cls.check_permissions = lambda self, request: None
+
         if cls:
-            before = before_view(view, is_method=True)
+            before = before_view(view, is_method=True, original_check_permissions=original_check_permissions)
         else:
-            before = before_view(view, is_method=False)
+            before = before_view(view, is_method=False, original_check_permissions=original_check_permissions)
 
         before._view_permissions = permissions  # we attach permissions to before_view as well
                                                 # to make debugging easier
