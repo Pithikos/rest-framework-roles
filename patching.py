@@ -171,24 +171,11 @@ def patch(urlconf=None):
 
             # attached view_permissions to class
             if hasattr(cls, 'view_permissions'):
-
-                # if hasattr(cls, 'get_permissions'):
-                    # error_message = ''
-                    # if hasattr(cls, 'permission_classes'):
-                        # import IPython; IPython.embed(using=False)
-                        # error_message = f"Class '{cls.__name__}' has both 'permission_classes' and 'view_permissions'. "+\
-                                        # f"You need to choose one."
-                    # elif cls().get_permissions():
-                        # error_message = f"Class '{cls.__name__}' has both REST-type permissions and 'view_permissions'. "+\
-                                        # f"You need to choose one."
-                    # if error_message:
-                        # raise Misconfigured(error_message)
-
                 view_permissions = parse_view_permissions(cls.view_permissions)
                 for view_name, permissions in view_permissions.items():
                     if hasattr(cls, view_name):
                         view = getattr(cls, view_name)
-                        view_table.append((pattern, view_name, cls, view, view_permissions, original_check_permissions))
+                        view_table.append((pattern, view_name, cls, view, view_permissions[view_name], original_check_permissions))
                     else:
                         raise Misconfigured(f"Specified view '{view_name}' in view_permissions for class '{cls.__name__}' but class has no such method")
 
