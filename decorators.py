@@ -19,13 +19,12 @@ def allowed(*roles):
         for r in roles:
             if r not in role_checkers:
                 raise exceptions.Misconfigured(f"Invalid role '{r}'")
+        if hasattr(fn, 'view_permissions'):
+            raise Exception(f"Unexpected existing 'view_permissions' for '{fn}'")
 
         fn.view_permissions = []
-        for role, role_checker in role_checkers.items():
-            if role in roles:
-                fn.view_permissions.append((True, role_checker))
-            else:
-                fn.view_permissions.append((False, role_checker))
+        for role in roles:
+            fn.view_permissions.append((True, role_checkers[role]))
 
         return fn
     return wrapped
@@ -42,13 +41,12 @@ def disallowed(*roles):
         for r in roles:
             if r not in role_checkers:
                 raise exceptions.Misconfigured(f"Invalid role '{r}'")
+        if hasattr(fn, 'view_permissions'):
+            raise Exception(f"Unexpected existing 'view_permissions' for '{fn}'")
 
         fn.view_permissions = []
-        for role, role_checker in role_checkers.items():
-            if role in roles:
-                fn.view_permissions.append((False, role_checker))
-            else:
-                fn.view_permissions.append((True, role_checker))
+        for role in roles:
+            fn.view_permissions.append((False, role_checkers[role]))
 
         return fn
     return wrapped

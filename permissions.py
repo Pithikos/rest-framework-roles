@@ -1,7 +1,7 @@
 from django.core.exceptions import PermissionDenied
 
 from .decorators import expensive
-
+from . import exceptions
 
 @expensive
 def is_self(view, request):

@@ -9,11 +9,12 @@ from django.http import HttpResponse
 from rest_framework import permissions, viewsets, views, decorators, generics, mixins, routers
 import rest_framework as drf
 from rest_framework.test import APIClient
+from rest_framework import status
 
 import patching
 from decorators import allowed
 from ..utils import UserSerializer, _func_name, is_patched
-from ..fixtures import request_factory
+from rest_framework_roles.roles import is_user
 
 
 # -------------------------------- Setup app -----------------------------------
@@ -22,7 +23,7 @@ from ..fixtures import request_factory
 @allowed('admin')
 @drf.decorators.api_view(['get', 'post'])
 def rest_function_view_decorated(request):
-    return HttpResponse(_func_namcclse())
+    return HttpResponse(_func_name())
 
 
 @drf.decorators.api_view(['get', 'post'])
@@ -32,7 +33,6 @@ def rest_function_view_undecorated(request):
 
 class RestAPIView(drf.views.APIView):  # This is the mother class of all classes
     serializer_class = UserSerializer
-    permission_classes = (drf.permissions.AllowAny,)
     queryset = User.objects.all()
     view_permissions = {
         'view_patched_by_view_permissions': {
@@ -66,6 +66,13 @@ class RestViewSet(drf.viewsets.ViewSet):
         return HttpResponse(_func_name())
 
 
+class RestAdminFallback(drf.generics.GenericAPIView):
+    permission_classes = (drf.permissions.IsAdminUser,)
+    @allowed('user')
+    def get(self, request):
+        return HttpResponse(_func_name())
+
+
 class RestClassMixed(drf.mixins.RetrieveModelMixin, drf.generics.GenericAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
@@ -96,6 +103,7 @@ urlpatterns = [
 
     # Normal class
     path('rest_class_view', RestAPIView.as_view()),
+    path('rest_admin_fallback', RestAdminFallback.as_view()),
 
     # Similar to functions
     path('rest_class_viewset', RestViewSet.as_view({'get': 'list'})),
@@ -174,3 +182,42 @@ def test_instance(rest_resolver):
         return HttpResponse()
     with patch.object(RestClassModel, 'dispatch', new=_test_instance): # any method will do
         APIClient().get('/users/')
+
+
+class TestCheckPermissionsFlow():
+    """
+    In REST we shuffle the check_permissions so that it occurs after our own
+    check_permissions. This requires a few extra steps.
+    """
+
+    def test_original_check_permissions_nullified(self, rest_resolver):
+        m = rest_resolver.resolve('/rest_admin_fallback')
+        assert m.func.view_class.check_permissions is patching.dummy_check_permissions
+
+
+    @pytest.mark.urls(__name__)
+    def test_check_permissions_precedes_original_check_permissions(self, db, rest_resolver):
+        """ We expect after patching to get"""
+        client = APIClient()
+
+        # First ensure view_permissions populated correctly
+        m = rest_resolver.resolve('/rest_admin_fallback')
+        cls = m.func.view_class
+        perms = cls.get._view_permissions
+        assert perms == [(True, is_user)]
+
+        # Anon gets caught by fallback (IsAdminUser)
+        # 1. Stay anon
+        # 2. Call the view
+        # 3. Ensure fallback fires (since we didn't match the user role)
+        resp = client.get('/rest_admin_fallback')
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+        # User does not get caught into the fallback
+        # 1. Login
+        # 2. Call the view
+        # 3. Ensure we bypass the admin fallback
+        user = User.objects.create(username='test')
+        client.force_authenticate(user)
+        resp = client.get('/rest_admin_fallback')
+        assert resp.status_code == status.HTTP_200_OK

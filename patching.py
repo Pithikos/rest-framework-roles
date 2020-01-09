@@ -100,6 +100,14 @@ def is_callback_method(callback):
     return False
 
 
+def dummy_check_permissions(self, request):
+    """
+    Dummy that replaces the REST class' check_permissions in order to not break
+    the flow of REST Framework
+    """
+    return None
+
+
 def get_view_class(callback):
     """
     Try to get the class from given callback
@@ -218,19 +226,19 @@ def patch(urlconf=None):
 
     # Perform patching
     for pattern, view_name, cls, view, view_permissions, original_check_permissions in view_table:
-        view.view_permissions = permissions
+        view.view_permissions = view_permissions
 
         # Ensure REST's check_permissions is always going to pass if called before before_view
         if original_check_permissions:
-            cls.check_permissions = lambda self, request: None
+            cls.check_permissions = dummy_check_permissions
 
         if cls:
             before = before_view(view, is_method=True, original_check_permissions=original_check_permissions)
         else:
             before = before_view(view, is_method=False, original_check_permissions=original_check_permissions)
 
-        before._view_permissions = permissions  # we attach permissions to before_view as well
-                                                # to make debugging easier
+        before._view_permissions = view_permissions  # we attach permissions to before_view as well
+                                                     # to make debugging easier
         if cls:
             setattr(cls, view_name, before)
         else:

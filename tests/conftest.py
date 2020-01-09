@@ -3,10 +3,11 @@ import sys
 
 import django
 from django.conf import settings
-from rest_framework_roles.roles import is_admin
+from rest_framework_roles.roles import is_admin, is_user
 
 ROLES = {
     'admin': is_admin,
+    'user': is_user,
 }
 VIEW_PERMISSIONS = []
 REST_FRAMEWORK_ROLES = {
