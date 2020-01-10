@@ -239,21 +239,6 @@ def get_urlpatterns(urlconf=None):
     url_patterns = list(iter_urlpatterns(urlconf.urlpatterns))
     return url_patterns
 
-    function_patterns = []
-    _all_patterns = get_urlpatterns(urlconf)
-    for pattern in _all_patterns:
-        if is_callback_method(pattern.callback):
-            class_patterns.append(pattern)
-        else:
-            function_patterns.append(pattern)
-    function_patterns = []
-    _all_patterns = get_urlpatterns(urlconf)
-    for pattern in _all_patterns:
-        if is_callback_method(pattern.callback):
-            class_patterns.append(pattern)
-        else:
-            function_pa
-
 
 def iter_urlpatterns(urlpatterns):
     for entity in urlpatterns:
