@@ -51,7 +51,6 @@ def before_view(view, is_method, original_check_permissions):
 
     Ensures permissions are checked before calling the view
     """
-
     def pre_view(self, view, request):
         logger.debug('Checking permissions..')
         granted = check_permissions(view, request)
@@ -67,7 +66,6 @@ def before_view(view, is_method, original_check_permissions):
         # In case of not granted permission
         if granted == False:
             raise PermissionDenied('Permission denied for user.')
-
 
     def wrapped_function(request, *args, **kwargs):
         pre_view(None, view, request)
@@ -151,7 +149,7 @@ def patch(urlconf=None):
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
     """
 
-    view_table = []  # list of (<pattern>, <viewname>, <class>, <view>, <permissions>)
+    view_table = []  # list of (<pattern>, <viewname>, <class>, <view>, <permissions>, <original check_permissions>)
 
     # Populate view_table
     for pattern in get_urlpatterns(urlconf):
@@ -210,6 +208,14 @@ def patch(urlconf=None):
         else:
             # Vanilla undecorated function - do nothing
             pass
+
+    # Validate table
+    for pattern, view_name, cls, view, view_permissions, original_check_permissions in view_table:
+        assert type(view_name) is str
+        assert type(view_permissions) is list, f"'view_permissions' must be list, got '{view_permissions}'"
+        for item in view_permissions:
+            assert type(item) is tuple, f"Expected each item in 'view_permissions' to be tutple. Got '{item}'"
+        assert original_check_permissions is None or hasattr(original_check_permissions, '__call__')
 
     # Perform patching
     for pattern, view_name, cls, view, view_permissions, original_check_permissions in view_table:
