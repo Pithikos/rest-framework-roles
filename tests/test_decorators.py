@@ -6,6 +6,20 @@ from ..roles import is_admin
 
 class TestRoleCheckerDecorators:
 
+    def test_decorator_without_args(self):
+        # Ensure @expensive results to the same as @expensive(cost=60)
+        @expensive
+        def decorated1():
+            pass
+        @expensive(cost=60)
+        def decorated2():
+            pass
+        assert not decorated1.__name__.startswith('decorator')
+        assert decorated1.__name__.startswith('wrapped')
+        assert not decorated2.__name__.startswith('decorator')
+        assert decorated2.__name__.startswith('wrapped')
+        assert decorated1.__qualname__ == decorated2.__qualname__
+
     def test_decorating_with_default_cost(self):
         @expensive
         def is_owner():
