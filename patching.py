@@ -57,7 +57,7 @@ def before_view(view, is_method, original_check_permissions):
     """
     def pre_view(self, view, request):
         logger.debug('Checking permissions..')
-        granted = check_permissions(self, request, view)
+        granted = check_permissions(request, view, self)
 
         # Role matched and permission granted
         if granted:

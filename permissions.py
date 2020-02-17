@@ -9,11 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 @expensive
-def is_self(view, request):
-    return request.user == view.get_object()
+def is_self(request, view, view_instance):
+    return request.user == view_instance.get_object()
 
 
-def bool_role(role, view, request):
+def bool_role(request, view, role):
     if hasattr(role, '__call__'):
         return role(view, request)
     elif type(role) != bool:
@@ -21,15 +21,15 @@ def bool_role(role, view, request):
     return role
 
 
-def bool_granted(granted, view, request):
+def bool_granted(request, view, granted, view_instance):
     if hasattr(granted, '__call__'):
-        return granted(view, request)
+        return granted(request, view, view_instance)
     elif type(granted) != bool:
         raise exceptions.Misconfigured(f"Expected granted to be boolean or callable, got '{granted}'")
     return granted
 
 
-def check_permissions(self, request, view):
+def check_permissions(request, view, view_instance):
     """
     Hook called for all 'guarded' views
 
@@ -40,11 +40,14 @@ def check_permissions(self, request, view):
     if not hasattr(view, 'view_permissions'):
         raise Exception(f"View '{view}' is missing 'view_permissions'")
 
-    # import IPython; IPython.embed(using=False)
     for permissions in view.view_permissions:
         granted, roles = permissions[0], permissions[1:]
 
         # Match any role
         for role in roles:
-            if bool_role(role, view, request):
-                return bool_granted(granted, view, request)
+            if bool_role(request, view, role):
+                logger.debug(f"check_permissions:{view.__name__}:{role.__qualname__}:{granted}")
+                if bool_granted(request, view, granted, view_instance):
+                    return True
+
+    # .. pre_view will perform any other checks ..
