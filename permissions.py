@@ -15,7 +15,7 @@ def is_self(request, view):
 
 def bool_role(request, view, role):
     if hasattr(role, '__call__'):
-        return role(view, request)
+        return role(request, view)
     elif type(role) != bool:
         raise exceptions.Misconfigured(f"Expected role to be boolean or callable, got '{role}'")
     return role

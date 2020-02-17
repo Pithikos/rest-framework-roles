@@ -1,26 +1,26 @@
 from django.contrib.auth import get_user_model
 
 
-def is_creator(view, request):
+def is_creator(request, view):
     obj = view.get_object()
     if hasattr(obj, 'creator'):
         return request.user == obj.creator
     return False
 
 
-def is_user(view, request):
+def is_user(request, view):
     return isinstance(request.user, get_user_model())
 
 
-def is_anon(view, request):
+def is_anon(request, view):
     return request.user.is_anonymous
 
 
-def is_admin(view, request):
+def is_admin(request, view):
     return request.user.is_superuser
 
 
-def is_staff(view, request):
+def is_staff(request, view):
     return request.user.is_staff or is_admin(request)
 
 
