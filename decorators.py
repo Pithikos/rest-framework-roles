@@ -62,14 +62,17 @@ def cheap(*args, **kwargs):
     cost = kwargs.get('cost', DEFAULT_CHEAP)
     assert cost < DEFAULT_EXPENSIVE, f"Must be below {DEFAULT_EXPENSIVE}, but given {cost}"
 
-    def decorator(fn):
-        def wrapped(*args, **kwargs):
+    def decorator_cheap(fn):
+        def wrapped_cheap(*args, **kwargs):
             return fn(*args, **kwargs)
-        wrapped.cost = cost
-        return wrapped
-    decorator.cost = cost
+        wrapped_cheap.cost = cost
+        return wrapped_cheap
+    decorator_cheap.cost = cost
 
-    return decorator
+    if args and callable(args[0]):
+        return decorator_cheap(*args)
+    else:
+        return decorator_cheap
 
 
 def expensive(*args, **kwargs):
@@ -79,11 +82,14 @@ def expensive(*args, **kwargs):
     cost = kwargs.get('cost', DEFAULT_EXPENSIVE)
     assert cost >= DEFAULT_EXPENSIVE, f"Must be above {DEFAULT_EXPENSIVE}, but given {cost}"
 
-    def decorator(fn):
-        def wrapped(*args, **kwargs):
+    def decorator_expensive(fn):
+        def wrapped_expensive(*args, **kwargs):
             return fn(*args, **kwargs)
-        wrapped.cost = cost
-        return wrapped
-    decorator.cost = cost
+        wrapped_expensive.cost = cost
+        return wrapped_expensive
+    decorator_expensive.cost = cost
 
-    return decorator
+    if args and callable(args[0]):
+        return decorator_expensive(*args)
+    else:
+        return decorator_expensive
