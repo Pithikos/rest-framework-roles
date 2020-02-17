@@ -13,7 +13,7 @@ from .fixtures import admin, user, anon
 from .utils import assert_allowed, assert_disallowed, UserSerializer
 
 
-# -------------------------------- Recipe --------------------------------------
+# -------------------------------- Recipe ---------------------------------
 
 
 import rest_framework.routers
