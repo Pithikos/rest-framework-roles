@@ -24,7 +24,7 @@ def bool_granted(granted, view, request):
     return granted
 
 
-def check_permissions(view, request, *args, **kwargs):
+def check_permissions(self, request, view):
     """
     Hook called for all 'guarded' views
 
