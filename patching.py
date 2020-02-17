@@ -32,6 +32,9 @@ HTTP_VERBS = {
 }
 
 
+VIEW_TABLE = None
+
+
 def is_django_configured():
     return settings._wrapped is not empty
 
@@ -41,6 +44,7 @@ def is_rest_framework_loaded():
 
 
 # ------------------------------ Wrappers --------------------------------------
+
 
 def before_view(view, is_method, original_check_permissions):
     """
@@ -151,8 +155,13 @@ def patch(urlconf=None):
 
     view_table = []  # list of (<pattern>, <viewname>, <class>, <view>, <permissions>, <original check_permissions>)
 
+    patterns = get_urlpatterns(urlconf)
+
+    if not patterns:
+        return
+
     # Populate view_table
-    for pattern in get_urlpatterns(urlconf):
+    for pattern in patterns:
         if pattern.callback.__qualname__.startswith('before_view.'):
             raise exceptions.DoublePatching(f"View is already patched: {pattern.callback}")
 
@@ -196,7 +205,7 @@ def patch(urlconf=None):
                 for view_name in HTTP_VERBS:
                     if not hasattr(cls, view_name):
                         continue
-                    # NOTE: For some reason cls.get == cls.post
+                    # NOTE: cls.get == cls.post since a func dealing with both
                     view = getattr(cls, view_name)
                     view_table.append((pattern, view_name, cls, view, pattern.callback.view_permissions, original_check_permissions))
 
@@ -208,6 +217,21 @@ def patch(urlconf=None):
         else:
             # Vanilla undecorated function - do nothing
             pass
+
+    # Populate global VIEW_TABLE
+    global VIEW_TABLE
+    VIEW_TABLE = {}
+    for items in view_table:
+        VIEW_TABLE[items[3]] = {
+            'pattern': items[0],
+            'view_class': items[2],
+            'view': items[3],
+            'permissions': items[4],
+        }
+    assert VIEW_TABLE
+    # Ensure full + relpath both include the changes
+    sys.modules[__name__].VIEW_TABLE = VIEW_TABLE
+    sys.modules['rest_framework_roles.%s' % __name__] = sys.modules[__name__]
 
     # Validate table
     for pattern, view_name, cls, view, view_permissions, original_check_permissions in view_table:
