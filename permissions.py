@@ -1,7 +1,12 @@
+import logging
 from django.core.exceptions import PermissionDenied
 
 from .decorators import expensive
 from . import exceptions
+
+
+logger = logging.getLogger(__name__)
+
 
 @expensive
 def is_self(view, request):
