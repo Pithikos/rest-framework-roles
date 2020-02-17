@@ -4,7 +4,6 @@ import pytest
 from django.urls import get_resolver, set_urlconf
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.test import TestCase  # needed for override_settings to work
 
 from ..roles import is_admin, is_user, is_anon
 from ..permissions import is_self
@@ -33,18 +32,12 @@ settings.REST_FRAMEWORK_ROLES['roles'] = f"{__name__}.ROLES"
 class UserViewSet(drf.viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    permission_classes = (drf.permissions.IsAdminUser,)  # this will act as fallback
 
     view_permissions = {
-        'retrieve': {'user': is_self},
+        'retrieve': {'user': is_self, 'admin': True},
         'create': {'anon': True},
         'list': {'admin': True},
     }
-
-    # def check_permissions(self, request):
-    #     print('CHECK_PERMISSIONS')
-    #     import IPython; IPython.embed(using=False)
-
 
 
 router = drf.routers.DefaultRouter()
@@ -77,22 +70,25 @@ class TestUserAPI():
         assert_disallowed(user, get='/users/')
 
     def test_user_can_retrieve_only_self(self, user, anon, admin):
-        other_user = User.objects.create(username='mrother')
+        other_user = User.objects.create(username='otheruser')
         other_user_url = f'/users/{other_user.id}/'
         all_users_url = '/users/'
 
-        # Admin can retrieve all since IsAdmin is the fallback..
-        # import ipdb; ipdb.set_trace()
-        # de
-        assert_allowed(admin, get=other_user_url)
-        # TODO: Figure out when 'get' is populated.
-        # assert_allowed(admin, get=f'/users/{admin.id}/')
-        #
-        # assert_disallowed(anon, get=other_user_url)
-        # assert_disallowed(user, get=other_user_url)
+        # Positive cases
+        assert_allowed(admin, get=f'/users/{admin.id}/')
+        assert_allowed(other_user, get=other_user_url)
+        assert_allowed(admin, get=other_user_url)  # admin is the only exception
+
+        # Negative cases
+        assert_disallowed(anon, get=other_user_url)  # fallback used
+        assert_disallowed(user, get=other_user_url)
+
 
     def test_only_anon_can_create(self, user, anon, admin):
-        pass
+        data = {'username': 'something', 'password': 'something'}
+        assert_allowed(anon, post=f'/users/', data=data)
+        assert_disallowed(user, post=f'/users/', data=data)
+        assert_disallowed(admin, post=f'/users/', data=data)
 
 
 def test_view_redirectios_dont_omit_checks():
