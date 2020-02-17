@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 
 from ..roles import is_admin, is_user, is_anon
 from ..permissions import is_self
+from ..decorators import allowed
 import patching
 from .fixtures import admin, user, anon
 from .utils import assert_allowed, assert_disallowed, UserSerializer
@@ -44,6 +45,12 @@ class UserViewSet(drf.viewsets.ModelViewSet):
     @drf.decorators.action(detail=False, methods=['get'])
     def me(self, request):
         self.kwargs['pk'] = request.user.pk
+        return self.retrieve(request)
+
+    @allowed('admin')
+    @drf.decorators.action(detail=False, methods=['get'])
+    def admin(self, request):
+        self.kwargs['pk'] = User.objects.get(username='mradmin').id
         return self.retrieve(request)
 
 
@@ -100,3 +107,8 @@ class TestUserAPI():
         assert_allowed(admin, get=f'/users/me/')
         assert_allowed(user, get=f'/users/me/')
         assert_disallowed(anon, get=f'/users/me/')
+
+    def test_patched_action(self, user, anon, admin):
+        assert_allowed(admin, get=f'/users/admin/')
+        assert_disallowed(user, get=f'/users/admin/')
+        assert_disallowed(anon, get=f'/users/admin/')
