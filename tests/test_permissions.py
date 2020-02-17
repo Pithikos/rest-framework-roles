@@ -14,9 +14,11 @@ from .utils import assert_allowed, assert_disallowed, UserSerializer
 
 # -------------------------------- Recipe --------------------------------------
 
+
 import rest_framework.routers
 import rest_framework.permissions
 import rest_framework.viewsets
+import rest_framework.decorators
 import rest_framework as drf
 from django.urls import path, include
 
@@ -38,6 +40,11 @@ class UserViewSet(drf.viewsets.ModelViewSet):
         'create': {'anon': True},
         'list': {'admin': True},
     }
+
+    @drf.decorators.action(detail=False, methods=['get'])
+    def me(self, request):
+        self.kwargs['pk'] = request.user.pk
+        return self.retrieve(request)
 
 
 router = drf.routers.DefaultRouter()
@@ -83,13 +90,13 @@ class TestUserAPI():
         assert_disallowed(anon, get=other_user_url)  # fallback used
         assert_disallowed(user, get=other_user_url)
 
-
     def test_only_anon_can_create(self, user, anon, admin):
         data = {'username': 'something', 'password': 'something'}
         assert_allowed(anon, post=f'/users/', data=data)
         assert_disallowed(user, post=f'/users/', data=data)
         assert_disallowed(admin, post=f'/users/', data=data)
 
-
-def test_view_redirectios_dont_omit_checks():
-    pass
+    def test_view_redirectios_dont_omit_checks(self, user, anon, admin):
+        assert_allowed(admin, get=f'/users/me/')
+        assert_allowed(user, get=f'/users/me/')
+        assert_disallowed(anon, get=f'/users/me/')
