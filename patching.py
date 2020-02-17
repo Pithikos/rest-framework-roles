@@ -59,17 +59,16 @@ def before_view(view, is_method, original_check_permissions):
         logger.debug('Checking permissions..')
         granted = check_permissions(self, request, view)
 
-        # In case of not matching a role
-        if granted == None:
-            # TODO: For REST Framework use the check_permissions
-            if original_check_permissions:
-                original_check_permissions(self, request)
-            else:
-                raise PermissionDenied()
+        # Role matched and permission granted
+        if granted:
+            return
 
-        # In case of not granted permission
-        if granted == False:
-            raise PermissionDenied('Permission denied for user.')
+        # No matching role
+        if granted == None and original_check_permissions:
+            original_check_permissions(self, request)
+
+        # Fallback for all other cases
+        raise PermissionDenied('Permission denied for user.')
 
     def wrapped_function(request, *args, **kwargs):
         pre_view(None, view, request)
