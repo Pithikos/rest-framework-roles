@@ -17,7 +17,7 @@ def dummy_view(request):
     return HttpResponse()
 
 
-def get_response(user, get=None, post=None):
+def get_response(user, get=None, post=None, data=None):
     """ Check return statuses """
     assert get or post
     if user.is_anonymous:
@@ -27,19 +27,19 @@ def get_response(user, get=None, post=None):
     if get:
         return _client.get(get)
     else:
-        return _client.post(post)
+        return _client.post(post, data)
 
 
-def assert_allowed(user, get=None, post=None, expected_status=(200, 201)):
-    response = get_response(user, get, post)
+def assert_allowed(user, get=None, post=None, data=None, expected_status=(200, 201)):
+    response = get_response(user, get, post, data)
     if response.status_code not in expected_status:
-        raise AssertionError(f"'{user}' should be allowed. Got '{response.status_code}'")
+        raise AssertionError(f"'{user}' should be allowed. Got {response.status_code} - '{response.content.decode()}'")
 
 
-def assert_disallowed(user, get=None, post=None, expected_status=(403,)):
-    response = get_response(user, get, post)
+def assert_disallowed(user, get=None, post=None, data=None, expected_status=(403,)):
+    response = get_response(user, get, post, data)
     if response.status_code not in expected_status:
-        raise AssertionError(f"'{user}' should be forbidden. Got '{response.status_code}'")
+        raise AssertionError(f"'{user}' should be allowed. Got {response.status_code} - '{response.content.decode()}'")
 
 
 def is_patched(fn):
