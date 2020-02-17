@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 @expensive
-def is_self(request, view, view_instance):
-    return request.user == view_instance.get_object()
+def is_self(request, view):
+    return request.user == view.get_object()
 
 
 def bool_role(request, view, role):
@@ -23,7 +23,10 @@ def bool_role(request, view, role):
 
 def bool_granted(request, view, granted, view_instance):
     if hasattr(granted, '__call__'):
-        return granted(request, view, view_instance)
+        if view_instance:
+            return granted(request, view=view_instance)
+        else:
+            return granted(request, view=view)
     elif type(granted) != bool:
         raise exceptions.Misconfigured(f"Expected granted to be boolean or callable, got '{granted}'")
     return granted
