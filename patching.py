@@ -1,6 +1,22 @@
 """
 Patching is mainly about patching the desired views with the before_view function.
-This ensures that permissions are checked before running the view.
+This ensures that permissions are checked before running the view. One of the big advantages
+of this is that redirection will not bypass any permission checks.
+
+Below you can see the overall design on the patching process.
+
+(Django patched)            (REST)                 (REST patched)
+  dispatch                 dispatch                   dispatch
+      |                       |                          |
+      |              REST check_permissions     REST check_permissions (mocked to do nothing)
+      |                       |                          |
+   pre_view                  view                    pre_view ------.
+      |                                                              |
+check_permissions                                              check_permissions
+      |                                                              |
+      |                                                 REST check_permissions (original)
+      |                                                              |
+    view                                                view  -------'
 """
 
 import sys
@@ -133,20 +149,6 @@ def patch(urlconf=None):
     Entrypoint for all patching (after configurations have loaded)
 
     We construct a view_table that is used for the actual patching.
-    Below you can find the overall design on what patching does.
-
-    (Django patched)            (REST)                 (REST patched)
-      dispatch                 dispatch                   dispatch
-          |                       |                          |
-          |              REST check_permissions     REST check_permissions (mocked to do nothing)
-          |                       |                          |
-       pre_view                  view                    pre_view ------.
-          |                                                              |
-  check_permissions                                              check_permissions
-          |                                                              |
-          |                                                 REST check_permissions (original)
-          |                                                              |
-        view                                                view  -------'
 
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
