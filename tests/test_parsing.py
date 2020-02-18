@@ -1,6 +1,6 @@
-from ..roles import is_admin, is_user, is_anon
-from ..parsing import parse_roles, parse_view_permissions
-from ..decorators import expensive, cheap
+from rest_framework_roles.roles import is_admin, is_user, is_anon
+from rest_framework_roles.parsing import parse_roles, parse_view_permissions
+from rest_framework_roles.decorators import expensive, cheap
 
 
 def test_parse_roles():

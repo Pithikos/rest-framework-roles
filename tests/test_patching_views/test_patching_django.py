@@ -8,8 +8,8 @@ from django.urls import path
 from django.http import HttpResponse
 
 # from .urls import *
-import patching
-from decorators import allowed
+from rest_framework_roles import patching
+from rest_framework_roles.decorators import allowed
 from ..utils import _func_name, is_patched
 
 

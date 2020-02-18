@@ -42,8 +42,8 @@ from django.conf import settings
 from django.utils.module_loading import import_string
 import django.core.exceptions as django_exceptions
 
-from exceptions import Misconfigured
-import decorators
+from rest_framework_roles.exceptions import Misconfigured
+from rest_framework_roles import decorators
 
 
 def validate_config(config):

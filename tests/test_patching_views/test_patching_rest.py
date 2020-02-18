@@ -11,8 +11,8 @@ import rest_framework as drf
 from rest_framework.test import APIClient
 from rest_framework import status
 
-import patching
-from decorators import allowed
+from rest_framework_roles import patching
+from rest_framework_roles.decorators import allowed
 from ..utils import UserSerializer, _func_name, is_patched
 from rest_framework_roles.roles import is_user
 

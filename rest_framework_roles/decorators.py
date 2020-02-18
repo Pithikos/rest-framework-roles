@@ -1,5 +1,5 @@
-import parsing
-import exceptions
+from rest_framework_roles import parsing
+from rest_framework_roles import exceptions
 
 DEFAULT_CHEAP = 0
 DEFAULT_EXPENSIVE = 50

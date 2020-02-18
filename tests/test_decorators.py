@@ -1,7 +1,7 @@
 import pytest
 
-from ..decorators import expensive, cheap, DEFAULT_EXPENSIVE, DEFAULT_CHEAP, allowed, disallowed
-from ..roles import is_admin
+from rest_framework_roles.decorators import expensive, cheap, DEFAULT_EXPENSIVE, DEFAULT_CHEAP, allowed, disallowed
+from rest_framework_roles.roles import is_admin
 
 
 class TestRoleCheckerDecorators:

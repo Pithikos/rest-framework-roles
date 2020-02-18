@@ -8,7 +8,7 @@ from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view_dec
 from .test_patching_rest import urlpatterns as rest_urlpatterns
 from .test_patching_django import django_function_view_decorated, django_function_view_undecorated
 from .test_patching_django import urlpatterns as django_urlpatterns
-from patching import is_callback_method, get_view_class, before_view, is_callback_rest_function
+from rest_framework_roles.patching import is_callback_method, get_view_class, before_view, is_callback_rest_function
 
 # NOTE: Do not patch in this module. It will double-patch and give an error.
 
@@ -61,7 +61,7 @@ def test_check_permissions_is_called_by_before_view():
     view = lambda r: HttpResponse(status=200)
     request = RequestFactory().get('')
     patched_view = before_view(view, is_method=False, original_check_permissions=None)
-    with mock.patch('patching.check_permissions') as mocked_check_permissions:
+    with mock.patch('rest_framework_roles.patching.check_permissions') as mocked_check_permissions:
         response = patched_view(request)
         assert response.status_code == 200
         assert mocked_check_permissions.called

@@ -5,10 +5,10 @@ from django.urls import get_resolver, set_urlconf
 from django.conf import settings
 from django.contrib.auth.models import User
 
-from ..roles import is_admin, is_user, is_anon
-from ..permissions import is_self
-from ..decorators import allowed
-import patching
+from rest_framework_roles.roles import is_admin, is_user, is_anon
+from rest_framework_roles.permissions import is_self
+from rest_framework_roles.decorators import allowed
+from rest_framework_roles import patching
 from .fixtures import admin, user, anon
 from .utils import assert_allowed, assert_disallowed, UserSerializer
 

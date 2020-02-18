@@ -1,8 +1,8 @@
 import logging
 from django.core.exceptions import PermissionDenied
 
-from .decorators import expensive
-from . import exceptions
+from rest_framework_roles.decorators import expensive
+from rest_framework_roles import exceptions
 
 
 logger = logging.getLogger(__name__)
