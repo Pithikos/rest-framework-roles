@@ -4,14 +4,13 @@ REST Framework Roles
 [![rest-framework-roles](https://circleci.com/gh/Pithikos/rest-framework-roles.svg?style=svg)](https://circleci.com/gh/Pithikos/rest-framework-roles)
 
 
+Role-based permissions for Django and Django REST Framework.
 
-
-Role-based permissions for your project.
-
-  - Keep permission logic outside the views and models.
-  - Permissions can utilize the database like in Django or be just a dict. No implementation details are enforced.
+  - Data-driven declarative permissions decoupled from views and models.
+  - Implementation agnostic. Roles can utilize the database (like in Django) or be just a dict or anything you want.
   - Support for Django and REST Framework - working with class-based and function-based views.
-  - Support redirection without breaking permissions.
+  - Easy gradual integration with existing Django REST Framework projects.
+  - Permissions are applied on a view-basis so redirections don't introduce security holes.
 
 
 Install
@@ -22,54 +21,69 @@ Install
     pip install rest_framework_roles
 
 
-Usage
------
+settings.py
+```python
+INSTALLED_APPS = {
+    ..
+    'rest_framework',
+    'rest_framework_roles',  # Must be after rest_framework
+}
 
-Read on docs/usage.md
+REST_FRAMEWORK_ROLES = {
+  'roles': 'myproject.roles.ROLES',
+}
+
+REST_FRAMEWORK = {
+  ..
+  'permission_classes': [],  # This ensures that by default noone is allowed access
+  ..
+}
+```
+
+roles.py
+```python
+from rest_framework_roles.roles import is_user, is_anon, is_admin
 
 
-REST Framework integration
+ROLES = {
+    'admin': is_admin,
+    'user': is_user,
+    'anon': is_anon,
+}
+```
+
+> You can create your own role checkers for custom roles. Each checker is a simple function that
+takes `request` and `view` as arguments.
+
+
+REST Framework example
 -------------------------------
 
-You can mix roles and REST permissions but there is a caveat. You **cannot** use
-`permission_classes` and `view_permissions` in the same class. This is because
-`permission_classes` target permissions for the whole class while `view_permissions`
-targets individual views.
-
-This will not work and you'll get an error
-
-    class MyViewSet():
-        permission_classes = (IsAdminUser,)
-
-        @allowed('admin')
-        def myview1(self, request):
-          pass
-
-This is fine
-
-    class MyViewSet():
-        permission_classes = (IsAdminUser,)
-        def myview(self, request):
-          pass
-
-    class MyOtherViewSet():
-        @allowed('admin')
-        def myview(self, request):
-          pass
-
-This also means that if no view permissions are defined, the defaults of REST Framework
-will be used.
+Permissions can be set either with the decorators **@allowed**, **@disallowed** or **view_permissions**. Permission is granted for any matching role. In case of no matching role, REST Framework's `permission_classes` is used as fallback.
 
 
-TODO
-----
+views.py
+```python
+from rest_framework.viewsets import ModelViewSet
+from rest_framework_roles.permissions import is_self
 
-* Determine if we should move REST's check_permissions inside before_view
-* Check is owner does not work for action 'me'
-  - No pk passed
-* Allow setting action permission for specific field on partial updates.
-  e.g. {'partial_update:username': False}
-* Allow checking action_map maybe
-    In [9]: self.action_map                                                                                  
-    Out[9]: {'get': 'me', 'patch': 'me'}
-* Add checks to ensure pytest fixtures if they exist, validate against checkers. (to avoid bugs in tests)
+
+class UserViewSet(ModelViewSet):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+
+    view_permissions = {
+        'retrieve': {'user': is_self, 'admin': True},
+        'create': {'anon': True},
+        'list': {'admin': True},
+    }
+
+    @allowed('admin', 'user')
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        self.kwargs['pk'] = request.user.pk
+        return self.retrieve(request)
+```
+
+> Note the permission for 'retrieve'. We need to include an explicit permission for 'admin' or else the admin user
+will only be able to retrieve himself (matching the user role).
