@@ -13,7 +13,7 @@ jobs:
       - python/save-cache
       - run:
           command: |
-            py.test
+            python -m pytest
           name: Test
       - store_artifacts:
           path: test-reports
