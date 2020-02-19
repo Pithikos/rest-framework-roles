@@ -10,13 +10,13 @@ Below you can see the overall design on the patching process.
       |                       |                          |
       |              REST check_permissions     REST check_permissions (mocked to do nothing)
       |                       |                          |
-   pre_view                  view                    pre_view ------.
-      |                                                              |
-check_permissions                                              check_permissions
-      |                                                              |
-      |                                                 REST check_permissions (original)
-      |                                                              |
-    view                                                view  -------'
+   pre_view                   |                     pre_view ------.
+      |                       |                                     |
+check_permissions             |                               check_permissions
+      |                       |                                     |
+      |                       |                        REST check_permissions (original)
+      |                       |                                     |
+    view                     view                      view  -------'
 """
 
 import sys
