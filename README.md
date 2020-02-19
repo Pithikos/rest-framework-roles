@@ -61,6 +61,9 @@ REST Framework example
 
 Permissions can be set either with the decorators **@allowed**, **@disallowed** or **view_permissions**. Permission is granted for any matching role. In case of no matching role, REST Framework's `permission_classes` is used as fallback.
 
+> Views not explicitly set any permissions will simply fall to their default behaviour. This ensures smooth
+integration with existing projects.
+
 
 views.py
 ```python
