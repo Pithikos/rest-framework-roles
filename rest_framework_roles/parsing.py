@@ -49,8 +49,10 @@ from rest_framework_roles import decorators
 def validate_config(config):
     if 'roles' not in config:
         raise django_exceptions.ImproperlyConfigured("Missing 'roles'")
-    if 'view_permissions' not in config:
-        raise django_exceptions.ImproperlyConfigured("Missing 'view_permissions'")
+
+    # TODO: Uncomment once we support view_permissions to be defined in settings
+    # if 'view_permissions' not in config:
+    #     raise django_exceptions.ImproperlyConfigured("Missing 'view_permissions'")
 
 
 def load_view_permissions(config=None):
