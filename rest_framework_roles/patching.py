@@ -216,10 +216,13 @@ def patch(urlconf=None):
             view_table.append((pattern, view.__name__, None, view, view.view_permissions, original_check_permissions))
 
         else:
-            # Vanilla undecorated function - do nothing
+            # Vanilla undecorated function - do nothing. Ideally we would want to
+            # add all views to the view_table. However this is impossible since there
+            # is no way to figure out all the views of a class and thus patch them.
             pass
 
-    # Populate global VIEW_TABLE
+    # Populate global VIEW_TABLE. Note that VIEW_TABLE only holds views have been
+    # explicitly
     global VIEW_TABLE
     VIEW_TABLE = {}
     for items in view_table:
@@ -229,7 +232,6 @@ def patch(urlconf=None):
             'view': items[3],
             'permissions': items[4],
         }
-    assert VIEW_TABLE
     # Ensure full + relpath both include the changes
     sys.modules[__name__].VIEW_TABLE = VIEW_TABLE
     sys.modules['rest_framework_roles.%s' % __name__] = sys.modules[__name__]
