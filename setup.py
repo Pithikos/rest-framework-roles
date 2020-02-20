@@ -45,6 +45,7 @@ setup(
     url='https://pypi.org/project/rest-framework-roles/',
     license='LICENSE',
     long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
     install_requires=[],
     python_requires='>=3',
     keywords=[
