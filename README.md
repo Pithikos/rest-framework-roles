@@ -147,17 +147,20 @@ first and then the expensive ones until a role matches that does not get granted
 
 
 ```python
-@cheap
+from rest_framework_roles.decorators import role_checker
+
+
+@role_checker(cost=0)
 def is_freebie_user(request, view):
     return request.user.is_authenticated and request.user.plan == 'freebie'
 
 
-@cheap
+@role_checker(cost=0)
 def is_payed_user(request, view):
     return request.user.is_authenticated and not request.user.plan
 
 
-@expensive
+@role_checker(cost=50)
 def is_creator(request, view):
     obj = view.get_object()
     if hasattr(obj, 'creator'):

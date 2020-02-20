@@ -1,14 +1,14 @@
 import logging
 from django.core.exceptions import PermissionDenied
 
-from rest_framework_roles.decorators import expensive
+from rest_framework_roles.decorators import DEFAULT_EXPENSIVE, role_checker
 from rest_framework_roles import exceptions
 
 
 logger = logging.getLogger(__name__)
 
 
-@expensive
+@role_checker(cost=DEFAULT_EXPENSIVE)
 def is_self(request, view):
     return request.user == view.get_object()
 

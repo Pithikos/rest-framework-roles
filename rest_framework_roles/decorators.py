@@ -1,9 +1,8 @@
 from rest_framework_roles import parsing
 from rest_framework_roles import exceptions
 
-DEFAULT_CHEAP = 0
+DEFAULT_COST = 0
 DEFAULT_EXPENSIVE = 50
-DEFAULT_COST = DEFAULT_CHEAP
 
 # ------------------------------------------------------------------------------
 
@@ -55,41 +54,20 @@ def disallowed(*roles):
 # ------------------------------------------------------------------------------
 
 
-def cheap(*args, **kwargs):
+def role_checker(*args, **kwargs):
     """
     Denote if role checker is cheap
     """
-    cost = kwargs.get('cost', DEFAULT_CHEAP)
-    assert cost < DEFAULT_EXPENSIVE, f"Must be below {DEFAULT_EXPENSIVE}, but given {cost}"
+    cost = kwargs.get('cost', DEFAULT_COST)
 
-    def decorator_cheap(fn):
-        def wrapped_cheap(*args, **kwargs):
+    def decorator_role(fn):
+        def wrapped_role(*args, **kwargs):
             return fn(*args, **kwargs)
-        wrapped_cheap.cost = cost
-        return wrapped_cheap
-    decorator_cheap.cost = cost
+        wrapped_role.cost = cost
+        return wrapped_role
+    decorator_role.cost = cost
 
     if args and callable(args[0]):
-        return decorator_cheap(*args)
+        return decorator_role(*args)
     else:
-        return decorator_cheap
-
-
-def expensive(*args, **kwargs):
-    """
-    Denote if role checker is expensive
-    """
-    cost = kwargs.get('cost', DEFAULT_EXPENSIVE)
-    assert cost >= DEFAULT_EXPENSIVE, f"Must be above {DEFAULT_EXPENSIVE}, but given {cost}"
-
-    def decorator_expensive(fn):
-        def wrapped_expensive(*args, **kwargs):
-            return fn(*args, **kwargs)
-        wrapped_expensive.cost = cost
-        return wrapped_expensive
-    decorator_expensive.cost = cost
-
-    if args and callable(args[0]):
-        return decorator_expensive(*args)
-    else:
-        return decorator_expensive
+        return decorator_role

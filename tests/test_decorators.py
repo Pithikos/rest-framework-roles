@@ -1,6 +1,6 @@
 import pytest
 
-from rest_framework_roles.decorators import expensive, cheap, DEFAULT_EXPENSIVE, DEFAULT_CHEAP, allowed, disallowed
+from rest_framework_roles.decorators import role_checker, allowed, disallowed, DEFAULT_COST
 from rest_framework_roles.roles import is_admin
 
 
@@ -8,10 +8,10 @@ class TestRoleCheckerDecorators:
 
     def test_decorator_without_args(self):
         # Ensure @expensive results to the same as @expensive(cost=60)
-        @expensive
+        @role_checker(cost=50)
         def decorated1():
             pass
-        @expensive(cost=60)
+        @role_checker(cost=60)
         def decorated2():
             pass
         assert not decorated1.__name__.startswith('decorator')
@@ -21,33 +21,27 @@ class TestRoleCheckerDecorators:
         assert decorated1.__qualname__ == decorated2.__qualname__
 
     def test_decorating_with_default_cost(self):
-        @expensive
+        @role_checker(cost=50)
         def is_owner():
             pass
-        @cheap
+        @role_checker
         def is_cheapo():
             pass
-        assert is_owner.cost == DEFAULT_EXPENSIVE
-        assert is_cheapo.cost == DEFAULT_CHEAP
+        assert is_owner.cost == 50
+        assert is_cheapo.cost == DEFAULT_COST
 
     def test_decorating_with_explicit_cost(self):
-        expensive_cost = DEFAULT_EXPENSIVE + 10
-        cheap_cost = DEFAULT_CHEAP + 10
-        @expensive(cost=expensive_cost)
+        expensive_cost = DEFAULT_COST + 10
+        cheap_cost = DEFAULT_COST + 1
+        @role_checker(cost=expensive_cost)
         def is_owner():
             pass
-        @cheap(cost=cheap_cost)
+        @role_checker(cost=cheap_cost)
         def is_cheapo():
             pass
             # assert
         assert is_owner.cost == expensive_cost
         assert is_cheapo.cost == cheap_cost
-
-    def test_invalid_cost_values(self):
-        with pytest.raises(AssertionError):
-            @expensive(cost=DEFAULT_EXPENSIVE-1)
-            def is_cheapo():
-                pass
 
 
 class TestViewDecorators:
