@@ -134,3 +134,36 @@ In this example:
   2. User or admin can update himself, but 'username' is only allowed to be updated by admin.
   3. Only anonymous can create a user account.
   4. Action 'me' can be used for both retrieval and partial update.
+
+
+Advanced roles
+--------------
+
+By default you get some role-checking functions for common roles like 'admin', 'user' and 'anon'.
+Many times though, you have many more roles and certain roles can be expensive to calculate.
+
+For this reason role-checking functions can be marked by a cost. The lower cost roles are checked
+first and then the expensive ones until a role matches that does not get granted permission.
+
+
+```python
+@cheap
+def is_freebie_user(request, view):
+    return request.user.is_authenticated and request.user.plan == 'freebie'
+
+
+@cheap
+def is_payed_user(request, view):
+    return request.user.is_authenticated and not request.user.plan
+
+
+@expensive
+def is_creator(request, view):
+    obj = view.get_object()
+    if hasattr(obj, 'creator'):
+        return request.user == obj.creator
+    return False
+```
+
+This is a bit similar to Django REST's `check_permissions` and `check_object_permissions` but much
+more powerful since you can refine the order of the role checking to the level you want.
