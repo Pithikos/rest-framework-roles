@@ -7,10 +7,11 @@ REST Framework Roles
 Role-based permissions for Django and Django REST Framework.
 
   - Data-driven declarative permissions decoupled from views and models.
-  - Implementation agnostic. Roles can utilize the database (like in Django) or be just a dict or anything you want.
+  - Roles are implementation agnostic. You can utilize the database or a dict or anything in between.
+  - Role checking can easily be optimized by simply annotating with a cost.
+  - Permissions applied on a view-basis ensuring redirections don't introduce security holes.
   - Support for Django and REST Framework - working with class-based and function-based views.
   - Easy gradual integration with existing Django REST Framework projects.
-  - Permissions are applied on a view-basis so redirections don't introduce security holes.
 
 
 Install
