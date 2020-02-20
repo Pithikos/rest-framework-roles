@@ -19,10 +19,11 @@ jobs:
       - store_artifacts:
           path: test-reports
           destination: test-reports
-  build:
+  deploy:
     executor: python/default
     steps:
       - checkout
+      - python/load-cache
       - run:
           name: verify git tag vs. version
           command: |
@@ -32,10 +33,6 @@ jobs:
           command: |
             python setup.py sdist
             python setup.py bdist_wheel
-  deploy:
-    executor: python/default
-    steps:
-      - python/load-cache
       - run:
           name: setup pypi credentials
           command: |
@@ -62,9 +59,6 @@ workflows:
               only: master
             tags:
               only: /v[0-9]+(\.[0-9]+)*/
-      - build:
-          requires:
-            - test
       - deploy:
           requires:
-            - build
+            - test
