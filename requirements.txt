@@ -2,3 +2,4 @@ djangorestframework
 cerberus
 pytest
 pytest-django
+twine

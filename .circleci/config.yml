@@ -35,9 +35,15 @@ jobs:
     executor: python/default
     steps:
       - run:
+          name: setup pypi credentials
+          command: |
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username = Pithikos" >> ~/.pypirc
+            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+      - run:
           name: upload to cheeseshop
           command: |
-            echo 'upload..'
+            twine upload dist/*
 
 workflows:
   test:
