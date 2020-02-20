@@ -9,7 +9,7 @@ except ImportError:
     from distutils.command.install import install
 
 
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 
 
 class VerifyVersionCommand(install):
