@@ -2,7 +2,6 @@ import pytest
 
 from rest_framework_roles.parsing import validate_config, load_roles, load_view_permissions
 from rest_framework_roles.roles import is_admin, is_anon
-from rest_framework_roles.utils import dotted_path
 
 
 VALID_ROLES = {'admin': is_admin, 'anon': is_anon}
