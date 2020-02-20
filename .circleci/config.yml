@@ -42,7 +42,7 @@ jobs:
       - run:
           name: upload to cheeseshop
           command: |
-            twine upload dist/*
+            python -m twine upload dist/*
 
 workflows:
   test:
