@@ -18,7 +18,7 @@ Install
 
 Install
 
-    pip install rest_framework_roles
+    pip install rest-framework-roles
 
 
 settings.py
