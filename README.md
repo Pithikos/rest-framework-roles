@@ -7,10 +7,11 @@ REST Framework Roles
 Role-based permissions for Django and Django REST Framework.
 
   - Data-driven declarative permissions decoupled from views and models.
-  - Implementation agnostic. Roles can utilize the database (like in Django) or be just a dict or anything you want.
+  - Roles are implementation agnostic. You can utilize the database or a dict or anything in between.
+  - Role checking can easily be optimized by simply annotating with a cost.
+  - Permissions applied on a view-basis ensuring redirections don't introduce security holes.
   - Support for Django and REST Framework - working with class-based and function-based views.
   - Easy gradual integration with existing Django REST Framework projects.
-  - Permissions are applied on a view-basis so redirections don't introduce security holes.
 
 
 Install
@@ -18,7 +19,7 @@ Install
 
 Install
 
-    pip install rest_framework_roles
+    pip install rest-framework-roles
 
 
 settings.py
@@ -133,3 +134,39 @@ In this example:
   2. User or admin can update himself, but 'username' is only allowed to be updated by admin.
   3. Only anonymous can create a user account.
   4. Action 'me' can be used for both retrieval and partial update.
+
+
+Advanced roles
+--------------
+
+By default you get some role-checking functions for common roles like 'admin', 'user' and 'anon'.
+Many times though, you have many more roles and certain roles can be expensive to calculate.
+
+For this reason role-checking functions can be marked by a cost. The lower cost roles are checked
+first and then the expensive ones until a role matches that does not get granted permission.
+
+
+```python
+from rest_framework_roles.decorators import role_checker
+
+
+@role_checker(cost=0)
+def is_freebie_user(request, view):
+    return request.user.is_authenticated and request.user.plan == 'freebie'
+
+
+@role_checker(cost=0)
+def is_payed_user(request, view):
+    return request.user.is_authenticated and not request.user.plan
+
+
+@role_checker(cost=50)
+def is_creator(request, view):
+    obj = view.get_object()
+    if hasattr(obj, 'creator'):
+        return request.user == obj.creator
+    return False
+```
+
+This is a bit similar to Django REST's `check_permissions` and `check_object_permissions` but much
+more powerful since you can refine the order of the role checking to the level you want.

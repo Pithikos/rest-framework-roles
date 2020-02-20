@@ -1,6 +1,6 @@
 from rest_framework_roles.roles import is_admin, is_user, is_anon
 from rest_framework_roles.parsing import parse_roles, parse_view_permissions
-from rest_framework_roles.decorators import expensive, cheap
+from rest_framework_roles.decorators import role_checker
 
 
 def test_parse_roles():
@@ -21,7 +21,7 @@ def test_parse_roles_adds_cost_attr():
 
 
 def test_parse_roles_cost():
-    @expensive(cost=50)
+    @role_checker(cost=50)
     def is_owner():
         pass
 
@@ -96,11 +96,11 @@ def test_parse_view_permissions():
 
 def test_rules_sorted_by_cost():
 
-    @expensive
+    @role_checker(cose=5)
     def is_expensivo(*args):
         pass
 
-    @cheap(cost=-5)
+    @role_checker(cost=-5)
     def is_cheapo(*args):
         pass
 
