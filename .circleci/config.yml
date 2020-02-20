@@ -24,9 +24,8 @@ jobs:
       - checkout
       - run:
           name: verify git tag vs. version
-          # command: |
-          #   python setup.py verify
-          command: echo "build.. $CIRCLE_CI"
+          command: |
+            python setup.py verify
       - run:
           name: create packages
           command: |
