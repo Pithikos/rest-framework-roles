@@ -12,14 +12,52 @@ jobs:
       - python/install-deps
       - python/save-cache
       - run:
+          name: Test
           command: |
             python -m pytest
-          name: Test
       - store_artifacts:
           path: test-reports
           destination: test-reports
+  build:
+    executor: python/default
+    steps:
+      - checkout
+      - run:
+          name: verify git tag vs. version
+          # command: |
+          #   python setup.py verify
+          command: echo "build.. $CIRCLE_CI"
+      - run:
+          name: create packages
+          command: |
+            python setup.py sdist
+            python setup.py bdist_wheel
+  deploy:
+    executor: python/default
+    steps:
+      - run:
+          name: upload to cheeseshop
+          command: |
+            echo 'upload..'
 
 workflows:
-  main:
+  test:
     jobs:
-      - test
+      - test:
+          filters:
+            branches:
+              only: development
+  new_release:
+    jobs:
+      - test:
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
+      - build:
+          requires:
+            - test
+      - deploy:
+          requires:
+            - build

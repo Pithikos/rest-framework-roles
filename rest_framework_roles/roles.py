@@ -15,12 +15,3 @@ def is_admin(request, view):
 
 def is_staff(request, view):
     return request.user.is_staff or is_admin(request)
-
-
-# Roles must be classes implementing either has_role or has_object_role
-ROLES = {
-    'user': is_user,
-    'anon': is_anon,
-    'admin': is_admin,
-    'staff': is_staff,
-}
