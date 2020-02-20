@@ -35,6 +35,7 @@ jobs:
   deploy:
     executor: python/default
     steps:
+      - python/load-cache
       - run:
           name: setup pypi credentials
           command: |
