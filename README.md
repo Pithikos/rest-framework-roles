@@ -90,3 +90,46 @@ class UserViewSet(ModelViewSet):
 
 > Note the permission for 'retrieve'. We need to include an explicit permission for 'admin' or else the admin user
 will only be able to retrieve himself (matching the user role).
+
+
+Advanced example
+----------------
+
+Sometimes you want to deal with more complex scenarios. Still this is way simpler than using `permission_classes` or similar as demonstrated below.
+
+```python
+from rest_framework_roles.permissions import is_self
+from rest_framework_roles import roles
+
+
+class UserViewSet(ModelViewSet):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    view_permissions = {
+        'retrieve': {'user': is_self},
+        'update': {'user': is_self, 'admin': True},
+        'create': {'anon': True},
+        'list': {'admin': True},
+        'me': {'user': True},
+    }
+
+    def update(self, request, **kwargs):
+        # Allow only admin to change user's username
+        if 'username' in request.data and not roles.is_admin(request, self):
+            raise PermissionDenied('Only admin can change username')
+        return super().update(request, **kwargs)
+
+    @action(detail=False, methods=['get', 'patch'])
+    def me(self, request):
+        self.kwargs['pk'] = request.user.pk
+        if request.method == 'GET':
+            return self.retrieve(request)
+        elif request.method == 'PATCH':
+            return self.partial_update(request)
+```
+
+In this example:
+  1. User can retrieve himself.
+  2. User or admin can update himself, but 'username' is only allowed to be updated by admin.
+  3. Only anonymous can create a user account.
+  4. Action 'me' can be used for both retrieval and partial update.
