@@ -73,12 +73,20 @@ class RestAdminFallback(drf.generics.GenericAPIView):
         return HttpResponse(_func_name())
 
 
-class RestClassMixed(drf.mixins.RetrieveModelMixin, drf.generics.GenericAPIView):
+class RestClassMixed(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    view_permissions = {'retrieve': {'admin': True}}
+    view_permissions = {'list': {'admin': True}}
     def get(self, request, *args, **kwargs):
-        return self.retrieve(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)
+
+
+class RestClassMixed2(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    view_permissions = {'list': {'admin': False}}
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
 
 
 class RestClassModel(drf.viewsets.ModelViewSet):
@@ -110,6 +118,7 @@ urlpatterns = [
 
     # Etc..
     path('rest_class_mixed', RestClassMixed.as_view()),
+    path('rest_class_mixed2', RestClassMixed2.as_view()),
     path('', include(router.urls)),
 ]
 
@@ -162,9 +171,29 @@ def test_not_doublepatching_views(rest_resolver):
     match = rest_resolver.resolve('/rest_class_mixed')
     cls = match.func.view_class
     assert cls.get
-    assert cls.retrieve
+    assert cls.list
     assert not is_patched(cls.get)
-    assert is_patched(cls.retrieve)
+    assert is_patched(cls.list)
+
+
+@pytest.mark.urls(__name__)
+def test_not_patching_inherited_class(rest_resolver, db):
+    # There was a bug where two class models patching the same view, ended
+    # up patching e.g. RetrieveModelMixin.retrieve instead of Class1.retrieve
+    # and Class2.retrieve
+    match1 = rest_resolver.resolve('/rest_class_mixed')
+    match2 = rest_resolver.resolve('/rest_class_mixed2')
+    assert match1 != match2
+
+    client = APIClient()
+    admin = User.objects.create(username='admin', is_superuser=True)
+    client.force_authenticate(admin)
+
+    resp = client.get('/rest_class_mixed')
+    assert resp.status_code == 200
+
+    resp = client.get('/rest_class_mixed2')
+    assert resp.status_code == 403
 
 
 @pytest.mark.urls(__name__)
