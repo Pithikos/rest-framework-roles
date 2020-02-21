@@ -60,10 +60,13 @@ takes `request` and `view` as arguments.
 REST Framework example
 -------------------------------
 
-Permissions can be set either with the decorators **@allowed**, **@disallowed** or **view_permissions**. Permission is granted for any matching role. In case of no matching role, REST Framework's `permission_classes` is used as fallback.
+Permissions can be set either with the decorators **@allowed**, **@disallowed** or **view_permissions**. Permissions
+are checked for all matching roles at runtime. In case of no matching role, REST Framework's `permission_classes` is
+used as fallback.
 
-> Views not explicitly set any permissions will simply fall to their default behaviour. This ensures smooth
-integration with existing projects.
+> Note that views need to explictly be set any permissions either via decorators or *view_permissions*. Otherwise those
+views will not go through the permission checking. This is intended behaviour since it allows easier gradual integration
+when other 3rd party libraries are used.
 
 
 views.py
@@ -89,36 +92,46 @@ class UserViewSet(ModelViewSet):
         return self.retrieve(request)
 ```
 
-> Note the permission for 'retrieve'. We need to include an explicit permission for 'admin' or else the admin user
-will only be able to retrieve himself (matching the user role).
+The permissions for each view are checked in order. All matching roles are checked, until permission
+is granted for that role.
+
+As an example in *retrieve* an admin user matches both roles ('user' and 'admin'). However when
+trying to retrieve another user's info, the first rule does not grant access so the checking will
+continue. On the second rule, permission is granted and the checking ends there.
 
 
 Advanced example
 ----------------
 
-Sometimes you want to deal with more complex scenarios. Still this is way simpler than using `permission_classes` or similar as demonstrated below.
+Sometimes you want to deal with more complex scenarios. Such refinement otherwise hairy
+with `permission_classes`, becomes much simpler.
 
+In the example below we have many more advanced scenarios including forbidding the user
+to update their email.
+
+views.py
 ```python
 from rest_framework_roles.permissions import is_self
 from rest_framework_roles import roles
+
+
+def not_updating_email(request, view):
+    return 'email' not in request.data
 
 
 class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
     view_permissions = {
-        'retrieve': {'user': is_self},
-        'update': {'user': is_self, 'admin': True},
-        'create': {'anon': True},
+        'retrieve': {'user': is_self, 'admin': True},
+        'update': {
+          'user': (is_self, not_updating_email),  # User can update everything but their email
+          'admin': True,
+        },
+        'create': {'anon': True},W
         'list': {'admin': True},
         'me': {'user': True},
     }
-
-    def update(self, request, **kwargs):
-        # Allow only admin to change user's username
-        if 'username' in request.data and not roles.is_admin(request, self):
-            raise PermissionDenied('Only admin can change username')
-        return super().update(request, **kwargs)
 
     @action(detail=False, methods=['get', 'patch'])
     def me(self, request):
@@ -129,21 +142,16 @@ class UserViewSet(ModelViewSet):
             return self.partial_update(request)
 ```
 
-In this example:
-  1. User can retrieve himself.
-  2. User or admin can update himself, but 'username' is only allowed to be updated by admin.
-  3. Only anonymous can create a user account.
-  4. Action 'me' can be used for both retrieval and partial update.
-
 
 Advanced roles
 --------------
 
 By default you get some role-checking functions for common roles like 'admin', 'user' and 'anon'.
-Many times though, you have many more roles and certain roles can be expensive to calculate.
+Many times though, you'll have much more roles and certain roles can be expensive to calculate.
 
-For this reason role-checking functions can be marked by a cost. The lower cost roles are checked
-first and then the expensive ones until a role matches that does not get granted permission.
+We can easily mark the role-checking functions with a cost. The lower cost roles are checked
+first and then the expensive ones later. The cost is an arbitrary number so this refinement can
+be as deep as you wish.
 
 
 ```python
@@ -168,5 +176,5 @@ def is_creator(request, view):
     return False
 ```
 
-This is a bit similar to Django REST's `check_permissions` and `check_object_permissions` but much
-more powerful since you can refine the order of the role checking to the level you want.
+> This is a bit similar to Django REST's `check_permissions` and `check_object_permissions` which in this case
+would translate to a max of 2 different costs.

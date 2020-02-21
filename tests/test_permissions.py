@@ -32,26 +32,41 @@ ROLES = {
 settings.REST_FRAMEWORK_ROLES['roles'] = f"{__name__}.ROLES"
 
 
+def not_updating_email(request, view):
+    return 'email' not in request.data
+
+
 class UserViewSet(drf.viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
     view_permissions = {
         'retrieve': {'user': is_self, 'admin': True},
+        'update': {
+            'user': (is_self, not_updating_email),
+            'admin': True,
+        },
         'create': {'anon': True},
         'list': {'admin': True},
+        'me': {'user': True},
     }
 
-    @drf.decorators.action(detail=False, methods=['get'])
+    def redirect_view(self, request):
+        if request.method == 'GET':
+            return self.retrieve(request)
+        elif request.method == 'PATCH':
+            return self.partial_update(request)
+
+    @drf.decorators.action(detail=False, methods=['get', 'patch'])
     def me(self, request):
         self.kwargs['pk'] = request.user.pk
-        return self.retrieve(request)
+        return self.redirect_view(request)
 
     @allowed('admin')
-    @drf.decorators.action(detail=False, methods=['get'])
+    @drf.decorators.action(detail=False, methods=['get', 'patch'])
     def admin(self, request):
         self.kwargs['pk'] = User.objects.get(username='mradmin').id
-        return self.retrieve(request)
+        return self.redirect_view(request)
 
 
 router = drf.routers.DefaultRouter()
@@ -96,6 +111,11 @@ class TestUserAPI():
         # Negative cases
         assert_disallowed(anon, get=other_user_url)  # fallback used
         assert_disallowed(user, get=other_user_url)
+
+    def test_user_can_not_update_email(self, user, anon, admin):
+        assert_allowed(user, patch=f'/users/{user.id}/', data={'username': 'newusername'})
+        assert_disallowed(user, patch=f'/users/{user.id}/', data={'email': 'newemail@test.com'})
+        assert_allowed(admin, patch=f'/users/{user.id}/', data={'email': 'newemail@test.com'})
 
     def test_only_anon_can_create(self, user, anon, admin):
         data = {'username': 'something', 'password': 'something'}
