@@ -1,22 +1,39 @@
 """
-Patching is mainly about patching the desired views with the before_view function.
-This ensures that permissions are checked before running the view. One of the big advantages
-of this is that redirection will not bypass any permission checks.
+Patching occurs at runtime. However due to the nature of the flow of class-based views, this
+can be more involved.
 
 Below you can see the overall design on the patching process.
 
 (Django patched)            (REST)                 (REST patched)
-  dispatch                 dispatch                   dispatch
+      |                       |                          |
+pre_dispatch --.              |                    pre_dispatch --.
+               |              |                                   |
+         runtime_patcher      |                             runtime_patcher
+               |              |                                   |
+            dispatch       dispatch                            dispatch
+               |              |                                   |
+      .--------'              |                          .--------'
+      |                       |                          |
       |                       |                          |
       |              REST check_permissions     REST check_permissions (mocked to do nothing)
       |                       |                          |
-   pre_view                   |                     pre_view ------.
-      |                       |                                     |
-check_permissions             |                               check_permissions
-      |                       |                                     |
-      |                       |                        REST check_permissions (original)
-      |                       |                                     |
-    view                     view                      view  -------'
+  pre_view ---.               |                      pre_view ----.
+               |              |                                   |
+        check_permissions     |                            check_permissions
+               |              |                                   |
+               |              |                           REST check_permissions (original)
+               |              |                                   |
+      .--------'              |                          .--------'
+      |                       |                          |
+     view                    view                       view
+
+
+- Hooks pre_dispatch and pre_view are added in normal flow of Django and Django REST.
+- pre_dispatch patches the class instance methods at runtime.
+- pre_view ensures that permissions are checked just before calling the actual view.
+- In case of REST Framework the original REST check_permissions need to be pushed down after our
+  own check_permissions.
+- The main advantage of this way of patching is that the permissions remain view-bound.
 """
 
 import sys
