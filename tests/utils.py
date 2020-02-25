@@ -41,7 +41,7 @@ def assert_allowed(user, get=None, post=None, patch=None, data=None, expected_st
 def assert_disallowed(user, get=None, post=None, patch=None, data=None, expected_status=(403,)):
     response = get_response(user, get, post, patch, data)
     if response.status_code not in expected_status:
-        raise AssertionError(f"'{user}' should be allowed. Got {response.status_code} - '{response.content.decode()}'")
+        raise AssertionError(f"'{user}' should not be allowed. Got {response.status_code} - '{response.content.decode()}'")
 
 
 def is_patched(fn):
