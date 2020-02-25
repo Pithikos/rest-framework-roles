@@ -11,8 +11,8 @@ ROLES = {
 }
 VIEW_PERMISSIONS = []
 REST_FRAMEWORK_ROLES = {
-  'roles': 'rest_framework_roles.tests.conftest.ROLES',
-  'view_permissions': 'rest_framework_roles.tests.conftest.VIEW_PERMISSIONS',
+  'roles': 'tests.conftest.ROLES',
+  'view_permissions': 'tests.conftest.VIEW_PERMISSIONS',
 }
 
 
