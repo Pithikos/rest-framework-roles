@@ -1,3 +1,7 @@
+"""
+Permissions are checked mainly by checking if a _view_permissions exist for given entity (function or class instance)
+"""
+
 import logging
 import collections
 from django.core.exceptions import PermissionDenied
@@ -43,10 +47,16 @@ def check_permissions(request, view, view_instance):
         Granted permission - True or False. None if no role matched.
     """
 
-    if not hasattr(view, 'view_permissions'):
-        raise Exception(f"View '{view}' is missing 'view_permissions'")
+    # Try to get view_permissions for the specific view
+    view_permissions = None
+    if hasattr(view, '_view_permissions'):
+        view_permissions = view._view_permissions
+    elif hasattr(view_instance, '_view_permissions') and view.__name__ in view_instance._view_permissions:
+        view_permissions = view_instance._view_permissions[view.__name__]
+    if not view_permissions:
+        raise Exception(f"Could not find view permissions for view '{view}'")
 
-    for permissions in view.view_permissions:
+    for permissions in view_permissions:
         granted, roles = permissions[0], permissions[1:]
 
         # Match any role
