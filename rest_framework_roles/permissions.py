@@ -63,7 +63,9 @@ def check_permissions(request, view, view_instance, view_permissions=None):
         # Match any role
         for role in roles:
             if bool_role(request, view, role):
-                logger.debug(f"check_permissions:{view.__name__}:{role.__qualname__}:{granted}")
+
+                role_name = role.__qualname__ if hasattr(role, '__qualname__') else role
+                logger.debug(f"check_permissions:{view.__name__}:{role_name}:{granted}")
 
                 # Check permission is granted. In case of multiple conditions, all
                 # must evaluate to True
