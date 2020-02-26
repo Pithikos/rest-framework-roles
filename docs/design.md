@@ -12,6 +12,12 @@ Example
 class MyView(View):
     def get(self):  
       return None
+    def dispatch():
+      initial()
+        # .check_permissions
+        # .check_throttles
+      response = handler(request)
+      return response
 ```
 
 Pseudocode
