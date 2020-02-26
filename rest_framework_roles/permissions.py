@@ -39,7 +39,7 @@ def bool_granted(request, view, granted, view_instance):
     return granted
 
 
-def check_permissions(request, view, view_instance):
+def check_permissions(request, view, view_instance, view_permissions=None):
     """
     Hook called for all 'guarded' views
 
@@ -47,15 +47,16 @@ def check_permissions(request, view, view_instance):
         Granted permission - True or False. None if no role matched.
     """
 
-    # Try to get view_permissions for the specific view
-    view_permissions = None
-    if hasattr(view, '_view_permissions'):
-        view_permissions = view._view_permissions
-    elif hasattr(view_instance, '_view_permissions') and view.__name__ in view_instance._view_permissions:
-        view_permissions = view_instance._view_permissions[view.__name__]
-    if not view_permissions:
-        raise Exception(f"Could not find view permissions for view '{view}'")
+    logger.debug('Check permissions..')
 
+    # For decorated functions we check the permissions attached to the function
+    if not view_permissions:
+        try:
+            view_permissions = view._view_permissions
+        except AttributeError:
+            raise Exception("No passed view_permissions and no attached _view_permissions found")
+
+    # Determine permissions
     for permissions in view_permissions:
         granted, roles = permissions[0], permissions[1:]
 
