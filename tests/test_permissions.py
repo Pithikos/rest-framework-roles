@@ -4,6 +4,7 @@ import pytest
 from django.urls import get_resolver, set_urlconf
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.http import HttpResponse
 
 from rest_framework_roles.roles import is_admin, is_user, is_anon
 from rest_framework_roles.permissions import is_self
@@ -39,6 +40,7 @@ def not_updating_email(request, view):
 class UserViewSet(drf.viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
+    permission_classes = []
 
     view_permissions = {
         'retrieve': {'user': is_self, 'admin': True},
@@ -62,11 +64,15 @@ class UserViewSet(drf.viewsets.ModelViewSet):
         self.kwargs['pk'] = request.user.pk
         return self.redirect_view(request)
 
-    @allowed('admin')
-    @drf.decorators.action(detail=False, methods=['get', 'patch'])
-    def admin(self, request):
-        self.kwargs['pk'] = User.objects.get(username='mradmin').id
-        return self.redirect_view(request)
+    @allowed('user')
+    @drf.decorators.action(detail=False)
+    def only_user(self, request):
+        return HttpResponse()
+
+    @allowed('anon')
+    @drf.decorators.action(detail=False)
+    def only_anon(self, request):
+        return HttpResponse()
 
 
 router = drf.routers.DefaultRouter()
@@ -129,6 +135,10 @@ class TestUserAPI():
         assert_disallowed(anon, get=f'/users/me/')
 
     def test_patched_action(self, user, anon, admin):
-        assert_allowed(admin, get=f'/users/admin/')
-        assert_disallowed(user, get=f'/users/admin/')
-        assert_disallowed(anon, get=f'/users/admin/')
+        assert_allowed(admin, get=f'/users/only_user/')  # admin is also a user
+        assert_allowed(user, get=f'/users/only_user/')
+        assert_disallowed(anon, get=f'/users/only_user/')
+
+        assert_disallowed(admin, get=f'/users/only_anon/')
+        assert_disallowed(user, get=f'/users/only_anon/')
+        assert_allowed(anon, get=f'/users/only_anon/')
