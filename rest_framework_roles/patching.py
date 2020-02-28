@@ -88,22 +88,6 @@ def is_rest_framework_loaded():
 # ------------------------------ Wrappers --------------------------------------
 
 
-
-
-def patch_class_instance(self):
-    pass
-
-
-def patch_handler(self, request):
-    """
-    Patch Django handler for view class instance at runtime
-
-    Args:
-        self: instance of a view class
-    """
-    pass
-
-
 def is_rest_function(self):
     return self.__class__.__qualname__ == 'WrappedAPIView'
 
