@@ -44,7 +44,7 @@ def assert_disallowed(user, get=None, post=None, patch=None, data=None, expected
         raise AssertionError(f"'{user}' should not be allowed. Got {response.status_code} - '{response.content.decode()}'")
 
 
-def is_patched(fn):
+def is_preview_patched(fn):
     return 'before_view' in str(fn)
 
 

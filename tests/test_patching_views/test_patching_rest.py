@@ -13,7 +13,7 @@ from rest_framework import status
 
 from rest_framework_roles import patching
 from rest_framework_roles.decorators import allowed
-from ..utils import UserSerializer, _func_name, is_patched, is_predispatch_patched
+from ..utils import UserSerializer, _func_name, is_preview_patched, is_predispatch_patched
 from rest_framework_roles.roles import is_user
 
 
@@ -156,13 +156,13 @@ def test_class_views_specified_methods_patched(rest_resolver, client):
     # We need to ensure that only the specified views get patched and nothing more
     # for classes.
     match = rest_resolver.resolve('/rest_class_mixed')
-    assert not is_patched(match.func.cls.get)
+    assert not is_preview_patched(match.func.cls.get)
 
     def _test_instance(self, request):
         assert self.get
         assert self.list
-        assert not is_patched(self.get)
-        assert is_patched(self.list)
+        assert not is_preview_patched(self.get)
+        assert is_preview_patched(self.list)
 
     # We patch 'initial' since that is called inside the original dispatch
     # so gives us self after the pre-dispatch hook runs
@@ -192,8 +192,8 @@ def test_class_instance_patched(db, rest_resolver, client):
         # populates the 'get' as a shortcut for 'list'.
         assert self.get
         assert self.list
-        assert is_patched(self.get)  # although not explicitly set perms
-        assert is_patched(self.list)
+        assert is_preview_patched(self.get)  # although not explicitly set perms
+        assert is_preview_patched(self.list)
         return HttpResponse()
 
     # We patch 'initial' since that is called inside the original dispatch
@@ -201,7 +201,7 @@ def test_class_instance_patched(db, rest_resolver, client):
     with patch.object(RestClassModel, 'initial', new=_test_instance):
         client.get('/users/')
 
-    assert not is_patched(RestClassModel.list)
+    assert not is_preview_patched(RestClassModel.list)
 
 
 class TestCheckPermissionsFlow():
