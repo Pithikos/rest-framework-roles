@@ -54,9 +54,9 @@ class TestViewDecorators:
         def disallowed_admin():
             pass
 
-        assert hasattr(allowed_admin, 'view_permissions')
-        assert type(allowed_admin.view_permissions) is list
-        assert (True, is_admin) in allowed_admin.view_permissions
+        assert hasattr(allowed_admin, '_view_permissions')
+        assert type(allowed_admin._view_permissions) is list
+        assert (True, is_admin) in allowed_admin._view_permissions
 
     def test_invalid_role_raises_exception(self):
         with pytest.raises(Exception):

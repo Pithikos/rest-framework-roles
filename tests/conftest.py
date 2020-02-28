@@ -1,9 +1,11 @@
 from os.path import dirname, abspath
 import sys
 
+import pytest
 import django
 from django.conf import settings
 from rest_framework_roles.roles import is_admin, is_user
+
 
 ROLES = {
     'admin': is_admin,
@@ -11,13 +13,19 @@ ROLES = {
 }
 VIEW_PERMISSIONS = []
 REST_FRAMEWORK_ROLES = {
-  'roles': 'rest_framework_roles.tests.conftest.ROLES',
-  'view_permissions': 'rest_framework_roles.tests.conftest.VIEW_PERMISSIONS',
+  'roles': 'tests.conftest.ROLES',
+  'view_permissions': 'tests.conftest.VIEW_PERMISSIONS',
 }
 
 
 urlpatterns = []  # Used only to avoid errors before we override ROOT_URLCONF in
                   # our test cases
+
+
+@pytest.fixture
+def client():
+    from rest_framework.test import APIClient
+    return APIClient()
 
 
 def pytest_configure(config):

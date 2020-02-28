@@ -1,3 +1,7 @@
+"""
+Permissions are checked mainly by checking if a _view_permissions exist for given entity (function or class instance)
+"""
+
 import logging
 import collections
 from django.core.exceptions import PermissionDenied
@@ -35,7 +39,7 @@ def bool_granted(request, view, granted, view_instance):
     return granted
 
 
-def check_permissions(request, view, view_instance):
+def check_permissions(request, view, view_instance, view_permissions=None):
     """
     Hook called for all 'guarded' views
 
@@ -43,16 +47,27 @@ def check_permissions(request, view, view_instance):
         Granted permission - True or False. None if no role matched.
     """
 
-    if not hasattr(view, 'view_permissions'):
-        raise Exception(f"View '{view}' is missing 'view_permissions'")
+    logger.debug('Check permissions..')
 
-    for permissions in view.view_permissions:
+    # For decorated functions we check the permissions attached to the function
+    if not view_permissions:
+        try:
+            view_permissions = view._view_permissions
+        except AttributeError:
+            raise Exception("No passed view_permissions and no attached _view_permissions found")
+
+    # import IPython; IPython.embed(using=False)
+
+    # Determine permissions
+    for permissions in view_permissions:
         granted, roles = permissions[0], permissions[1:]
 
         # Match any role
         for role in roles:
             if bool_role(request, view, role):
-                logger.debug(f"check_permissions:{view.__name__}:{role.__qualname__}:{granted}")
+
+                role_name = role.__qualname__ if hasattr(role, '__qualname__') else role
+                logger.debug(f"check_permissions:{view.__name__}:{role_name}:{granted}")
 
                 # Check permission is granted. In case of multiple conditions, all
                 # must evaluate to True
