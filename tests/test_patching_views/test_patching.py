@@ -61,7 +61,7 @@ def test_check_permissions_is_called_by_before_view():
     view = lambda r: HttpResponse(status=200)
     request = RequestFactory().get('')
     patched_view = before_view(view, False, None, None, None)
-    with mock.patch('rest_framework_roles.patching.check_permissions') as mocked_check_permissions:
+    with mock.patch('rest_framework_roles.permissions.check_permissions') as mocked_check_permissions:
         response = patched_view(request)
         assert response.status_code == 200
         assert mocked_check_permissions.called

@@ -136,13 +136,14 @@ def rest_resolver():
 def test_function_views_patching(rest_resolver, client):
     # We simply ensure that check_permissions is called and don't dwell into how the
     # patching occurs
+    # from rest_framework_roles.permissions import check_permissions
 
-    with patch('rest_framework_roles.patching.check_permissions') as check_permissions:
+    with patch('rest_framework_roles.permissions.check_permissions') as check_permissions:
         resp = client.get('/rest_function_view_decorated')
         assert resp.status_code != 404
         assert check_permissions.called
 
-    with patch('rest_framework_roles.patching.check_permissions') as check_permissions:
+    with patch('rest_framework_roles.permissions.check_permissions') as check_permissions:
         resp = client.get('/rest_function_view_undecorated')
         assert resp.status_code != 404
         assert not check_permissions.called

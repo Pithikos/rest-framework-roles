@@ -88,22 +88,6 @@ def is_rest_framework_loaded():
 # ------------------------------ Wrappers --------------------------------------
 
 
-
-
-def patch_class_instance(self):
-    pass
-
-
-def patch_handler(self, request):
-    """
-    Patch Django handler for view class instance at runtime
-
-    Args:
-        self: instance of a view class
-    """
-    pass
-
-
 def is_rest_function(self):
     return self.__class__.__qualname__ == 'WrappedAPIView'
 
@@ -194,7 +178,6 @@ def before_view(view, view_permissions, is_method, view_instance, original_check
         logger.debug('Checking permissions..')
 
         # Try to find the right permission checks for the view
-        # import IPython; IPython.embed(using=False)
         granted = permissions.check_permissions(request, view, self, view_permissions)
 
         # Role matched and permission granted
