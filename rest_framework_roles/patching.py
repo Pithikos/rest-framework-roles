@@ -142,7 +142,7 @@ def before_dispatch(dispatch):
                     handler_permissions = self._view_permissions[verb]
 
             else:
-                raise Exception(f'No _view_permissions could be found for {handler} ({verb})')
+                logger.debug(f'No _view_permissions found for handler {handler} ({verb})')
 
             # Patch check_permissions for REST
             if hasattr(self, 'check_permissions'):
