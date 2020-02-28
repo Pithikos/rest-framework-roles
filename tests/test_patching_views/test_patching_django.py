@@ -65,12 +65,12 @@ def test_patching_function_views(django_resolver, client):
     # Vanilla Django function views are the exception, and are patched directly
     # regardless, in order to simplify things.
 
-    with patch('rest_framework_roles.patching.check_permissions') as check_permissions:
+    with patch('rest_framework_roles.permissions.check_permissions') as check_permissions:
         resp = client.get('/django_function_view_decorated')
         assert resp.status_code != 404
         assert check_permissions.called
 
-    with patch('rest_framework_roles.patching.check_permissions') as check_permissions:
+    with patch('rest_framework_roles.permissions.check_permissions') as check_permissions:
         resp = client.get('/django_function_view_undecorated')
         assert resp.status_code != 404
         assert not check_permissions.called
@@ -86,7 +86,7 @@ def test_patching_instance_views(django_resolver, client):
     assert not is_preview_patched(cls.view_unpatched)
 
     # Ensure check_permissions called
-    with patch('rest_framework_roles.patching.check_permissions') as check_permissions:
+    with patch('rest_framework_roles.permissions.check_permissions') as check_permissions:
         resp = client.get('/django_class_view')
         assert resp.status_code != 404
         assert check_permissions.called

@@ -194,7 +194,6 @@ def before_view(view, view_permissions, is_method, view_instance, original_check
         logger.debug('Checking permissions..')
 
         # Try to find the right permission checks for the view
-        # import IPython; IPython.embed(using=False)
         granted = permissions.check_permissions(request, view, self, view_permissions)
 
         # Role matched and permission granted
