@@ -13,7 +13,7 @@ from rest_framework import status
 
 from rest_framework_roles import patching
 from rest_framework_roles.decorators import allowed
-from ..utils import UserSerializer, _func_name, is_patched
+from ..utils import UserSerializer, _func_name, is_preview_patched, is_predispatch_patched
 from rest_framework_roles.roles import is_user
 
 
@@ -98,8 +98,7 @@ class RestClassModel(drf.viewsets.ModelViewSet):
         'list': {'admin': False},
     }
 
-    # def check_permissions(self, request):
-    #     import IPython; IPython.embed(using=False)
+
 router = drf.routers.DefaultRouter()
 router.register(r'users', RestClassModel, basename='user')
 
@@ -133,84 +132,76 @@ def rest_resolver():
     return resolver
 
 
-def test_function_views_patched(rest_resolver):
-    # Although REST Framework end up being methods, we treat them similarly
-    # to Django vanilla views. This is due to although being methods, the meta-
-    # programmatically generated classes are missing the function as method.
-    match = rest_resolver.resolve('/rest_function_view_decorated')
-    assert is_patched(match.func.cls.get)
-    assert is_patched(match.func.cls.post)
+@pytest.mark.urls(__name__)
+def test_function_views_patching(rest_resolver, client):
+    # We simply ensure that check_permissions is called and don't dwell into how the
+    # patching occurs
 
-    # Views used in urlpatterns but not explicitly given permissions..
-    match = rest_resolver.resolve('/rest_function_view_undecorated')
-    assert not is_patched(match.func.cls.get)
-    assert not is_patched(match.func.cls.post)
+    with patch('rest_framework_roles.patching.check_permissions') as check_permissions:
+        resp = client.get('/rest_function_view_decorated')
+        assert resp.status_code != 404
+        assert check_permissions.called
 
-
-def test_method_views_patched_with_directives_only(rest_resolver):
-    match = rest_resolver.resolve('/rest_class_view')
-    cls = match.func.view_class  # => Normal class with corresponding method
-    assert not is_patched(cls.get)
-    assert not is_patched(cls.view_unpatched)
-    assert is_patched(cls.view_patched_by_view_permissions)
-
-    assert is_patched(cls.view_patched_by_decorator)
-    assert is_patched(cls.action_patched_by_decorator)
-
-    match = rest_resolver.resolve('/rest_class_viewset')
-    cls = match.func.cls  # NOTE THE DIFFERENCE: We use cls instead of view_class
-    assert is_patched(cls.list)
+    with patch('rest_framework_roles.patching.check_permissions') as check_permissions:
+        resp = client.get('/rest_function_view_undecorated')
+        assert resp.status_code != 404
+        assert not check_permissions.called
 
 
-def test_not_doublepatching_views(rest_resolver):
+@pytest.mark.urls(__name__)
+def test_class_views_specified_methods_patched(rest_resolver, client):
     # REST Framework essentially redirects classic Django views to a higher level
     # interface. e.g. self.get -> self.retrieve
     #
     # We need to ensure that only the specified views get patched and nothing more
     # for classes.
     match = rest_resolver.resolve('/rest_class_mixed')
-    cls = match.func.view_class
-    assert cls.get
-    assert cls.list
-    assert not is_patched(cls.get)
-    assert is_patched(cls.list)
+    assert not is_preview_patched(match.func.cls.get)
+
+    def _test_instance(self, request):
+        assert self.get
+        assert self.list
+        assert not is_preview_patched(self.get)
+        assert is_preview_patched(self.list)
+
+    # We patch 'initial' since that is called inside the original dispatch
+    # so gives us self after the pre-dispatch hook runs
+    with patch.object(RestClassMixed, 'initial', new=_test_instance):
+        resp = client.get('/rest_class_mixed')
+        assert resp.status_code != 404
 
 
 @pytest.mark.urls(__name__)
-def test_not_patching_inherited_class(rest_resolver, db):
-    # There was a bug where two class models patching the same view, ended
-    # up patching e.g. RetrieveModelMixin.retrieve instead of Class1.retrieve
-    # and Class2.retrieve
-    match1 = rest_resolver.resolve('/rest_class_mixed')
-    match2 = rest_resolver.resolve('/rest_class_mixed2')
-    assert match1 != match2
+def test_class_instance_patched(db, rest_resolver, client):
+    # We should not patch the class methods directly but the instances. This is since a class can
+    # inherit for mixins and we don't want to end up having two classes sharing the same mixin
+    # to behave the same.
+    assert rest_resolver.resolve('/rest_class_mixed') != rest_resolver.resolve('/rest_class_mixed2')
 
-    client = APIClient()
     admin = User.objects.create(username='admin', is_superuser=True)
     client.force_authenticate(admin)
-
     resp = client.get('/rest_class_mixed')
     assert resp.status_code == 200
-
     resp = client.get('/rest_class_mixed2')
     assert resp.status_code == 403
 
+    # ------------------------------------------------------------------
 
-@pytest.mark.urls(__name__)
-def test_instance(rest_resolver):
-    # This test mainly demonstrates the underworkings of REST Framework and to
-    # not consider the behaviour as a bug.
     def _test_instance(self, request):
         # 'get' and 'list' are the same at this point since as_view(),
         # populates the 'get' as a shortcut for 'list'.
         assert self.get
         assert self.list
-        assert is_patched(self.get)  # although not explicitly set perms
-        assert is_patched(self.list)
-        assert self.list == self.get
+        assert is_preview_patched(self.get)  # although not explicitly set perms
+        assert is_preview_patched(self.list)
         return HttpResponse()
-    with patch.object(RestClassModel, 'dispatch', new=_test_instance): # any method will do
-        APIClient().get('/users/')
+
+    # We patch 'initial' since that is called inside the original dispatch
+    # so gives us self after the pre-dispatch hook runs
+    with patch.object(RestClassModel, 'initial', new=_test_instance):
+        client.get('/users/')
+
+    assert not is_preview_patched(RestClassModel.list)
 
 
 class TestCheckPermissionsFlow():
@@ -219,21 +210,9 @@ class TestCheckPermissionsFlow():
     check_permissions. This requires a few extra steps.
     """
 
-    def test_original_check_permissions_nullified(self, rest_resolver):
-        m = rest_resolver.resolve('/rest_admin_fallback')
-        assert m.func.view_class.check_permissions is patching.dummy_check_permissions
-
-
     @pytest.mark.urls(__name__)
-    def test_check_permissions_precedes_original_check_permissions(self, db, rest_resolver):
+    def test_check_permissions_precedes_original_check_permissions(self, db, rest_resolver, client):
         """ We expect after patching to get"""
-        client = APIClient()
-
-        # First ensure view_permissions populated correctly
-        m = rest_resolver.resolve('/rest_admin_fallback')
-        cls = m.func.view_class
-        perms = cls.get._view_permissions
-        assert perms == [(True, is_user)]
 
         # Anon gets caught by fallback (IsAdminUser)
         # 1. Stay anon

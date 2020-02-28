@@ -1,22 +1,51 @@
 """
-Patching is mainly about patching the desired views with the before_view function.
-This ensures that permissions are checked before running the view. One of the big advantages
-of this is that redirection will not bypass any permission checks.
+Patching occurs at runtime. However due to the nature of the flow of class-based views, this
+can be more involved.
 
 Below you can see the overall design on the patching process.
 
 (Django patched)            (REST)                 (REST patched)
-  dispatch                 dispatch                   dispatch
+      |                       |                          |
+pre_dispatch --.              |                    pre_dispatch --.
+               |              |                                   |
+          patch handler       |                              patch handler
+               |              |                                   |
+   (optionally patch all      |                           (optionally patch all
+    instance methods)         |                            instance methods)
+               |              |                                   |
+            dispatch       dispatch                            dispatch
+               |              |                                   |
+      .--------'              |                          .--------'
+      |                       |                          |
       |                       |                          |
       |              REST check_permissions     REST check_permissions (mocked to do nothing)
       |                       |                          |
-   pre_view                   |                     pre_view ------.
-      |                       |                                     |
-check_permissions             |                               check_permissions
-      |                       |                                     |
-      |                       |                        REST check_permissions (original)
-      |                       |                                     |
-    view                     view                      view  -------'
+  pre_view ---.               |                      pre_view ----.
+               |              |                                   |
+        check_permissions     |                            check_permissions
+               |              |                                   |
+               |              |                           REST check_permissions (original)
+               |              |                                   |
+      .--------'              |                          .--------'
+      |                       |                          |
+     view                    view                       view
+
+
+pre_dispatch
+    - nullify self.check_permissions (and push to pre_view)
+    - patch handler with pre_view
+    - patch defined views in view_permissions with pre_view
+
+pre_view
+    - check_permissions
+    - original_check_permissions
+
+* Hooks pre_dispatch and pre_view are added in normal flow of Django and Django REST.
+* pre_dispatch patches at runtime the handler and optionally all class instance methods. This allows redirections
+* pre_view ensures that permissions are checked just before calling the actual view.
+* In case of REST Framework the original REST check_permissions need to be pushed down after our
+  own check_permissions.
+* The main advantage of this way of patching is that the permissions remain view-bound.
 """
 
 import sys
@@ -48,9 +77,6 @@ HTTP_VERBS = {
 }
 
 
-VIEW_TABLE = None
-
-
 def is_django_configured():
     return settings._wrapped is not empty
 
@@ -62,18 +88,114 @@ def is_rest_framework_loaded():
 # ------------------------------ Wrappers --------------------------------------
 
 
-def before_view(view, is_method, original_check_permissions):
+
+
+def patch_class_instance(self):
+    pass
+
+
+def patch_handler(self, request):
+    """
+    Patch Django handler for view class instance at runtime
+
+    Args:
+        self: instance of a view class
+    """
+    pass
+
+
+def is_rest_function(self):
+    return self.__class__.__qualname__ == 'WrappedAPIView'
+
+
+def before_dispatch(dispatch):
+    def pre_dispatch(self, request, *args, **kwargs):
+        """
+        Main purpose is to patch instance methods
+        """
+
+        # Attach _view_permissions to body of class
+        if hasattr(self, 'view_permissions'):
+            self._view_permissions = parse_view_permissions(self.view_permissions)
+
+        # Patch handler (as per Django and REST shared logic)
+        verb = request.method.lower()
+        if verb in self.http_method_names:
+            handler = getattr(self, verb)
+
+            # Get permissions for handle
+            # NOTE: handler can e.g. be self.post but bound to 'create'
+            handler_permissions = None
+            if hasattr(handler, '_view_permissions'):
+                handler_permissions = handler._view_permissions
+
+            # REST FUNCTION: Rest function. We use the class-based _view_permissions populated for the specific function
+            elif is_rest_function(self):
+                function_name = self.__class__.__name__
+                handler_permissions = self._view_permissions[function_name]
+
+            # REST CLASS
+            elif hasattr(self, '_view_permissions'):
+                if handler.__name__ in self._view_permissions:
+                    handler_permissions = self._view_permissions[handler.__name__]
+                elif verb in self._view_permissions:
+                    handler_permissions = self._view_permissions[verb]
+
+            else:
+                raise Exception(f'No _view_permissions could be found for {handler} ({verb})')
+
+            # Patch check_permissions for REST
+            if hasattr(self, 'check_permissions'):
+                original_check_permissions = self.check_permissions
+                self.check_permissions = dummy_check_permissions
+            else:
+                original_check_permissions= None
+
+            # Patch view
+            if handler_permissions:
+                before = before_view(
+                    view=handler,
+                    view_permissions=handler_permissions,
+                    is_method=True,
+                    view_instance=self,
+                    original_check_permissions=original_check_permissions
+                )
+                setattr(self, verb, before)
+
+        # ---------------------------------------------------------------
+
+        # In order to allow redirections we need to patch all methods of instance as per _view_permissions
+        if hasattr(self, '_view_permissions') and not is_rest_function(self):
+            for view_name, permissions in self._view_permissions.items():
+                if hasattr(self, view_name):
+                    view = getattr(self, view_name)
+                    before = before_view(view, permissions, is_method=True, view_instance=self, original_check_permissions=original_check_permissions)
+                    setattr(self, view_name, before)
+                else:
+                    raise Misconfigured(f"Specified view '{view_name}' in view_permissions for class '{self.__name__}' but class has no such method")
+
+        return dispatch(self, request, *args, **kwargs)
+
+    return pre_dispatch
+
+
+def before_view(view, view_permissions, is_method, view_instance, original_check_permissions):
     """
     Main wrapper for views
 
     Args:
         is_method(bool): Tells if the view is class-based
+        view_instance: Only applicable for classes. Required for checking permissions in view redirections.
 
     Ensures permissions are checked before calling the view
     """
-    def pre_view(self, view, request):
+
+    def pre_view(view, request, self):
         logger.debug('Checking permissions..')
-        granted = check_permissions(request, view, self)
+
+        # Try to find the right permission checks for the view
+        # import IPython; IPython.embed(using=False)
+        granted = check_permissions(request, view, self, view_permissions)
 
         # Role matched and permission granted
         if granted:
@@ -81,18 +203,18 @@ def before_view(view, is_method, original_check_permissions):
 
         # No matching role
         if granted == None and original_check_permissions:
-            original_check_permissions(self, request)
+            original_check_permissions(request)
 
         # Fallback for all other cases
         raise PermissionDenied('Permission denied for user.')
 
     def wrapped_function(request, *args, **kwargs):
-        pre_view(None, view, request)
+        pre_view(view, request, None)
         return view(request, *args, **kwargs)
 
-    def wrapped_method(self, request, *args, **kwargs):
-        pre_view(self, view, request)
-        return view(self, request, *args, **kwargs)
+    def wrapped_method(request, *args, **kwargs):
+        pre_view(view, request, view_instance)
+        return view(request, *args, **kwargs)
 
     if is_method:
         return wrapped_method
@@ -117,7 +239,12 @@ def is_callback_method(callback):
     return False
 
 
-def dummy_check_permissions(self, request):
+def is_callback_rest_function(callback):
+    # REST functions end up being methods after metaprogramming
+    return is_callback_method(callback) and callback.__qualname__ == 'WrappedAPIView'
+
+
+def dummy_check_permissions(self, *args):
     """
     Dummy that replaces the REST class' check_permissions in order to not break
     the flow of REST Framework
@@ -139,11 +266,6 @@ def get_view_class(callback):
     return cls
 
 
-def is_callback_rest_function(callback):
-    # REST functions end up being methods after metaprogramming
-    return is_callback_method(callback) and callback.__qualname__ == 'WrappedAPIView'
-
-
 def patch(urlconf=None):
     """
     Entrypoint for all patching (after configurations have loaded)
@@ -152,6 +274,16 @@ def patch(urlconf=None):
 
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
+
+
+
+    patch ---- REST method ----.
+         |                      --- patch dispatch ----> patch view
+         |'--- Django method --/                         /
+         |                    /                         /
+         |'--- REST func  ---'                         /
+         |                                            /
+         '---- Django func --------------------------'
     """
 
     view_table = []  # list of (<pattern>, <viewname>, <class>, <view>, <permissions>, <original check_permissions>)
@@ -161,108 +293,38 @@ def patch(urlconf=None):
     if not patterns:
         return
 
-    # Populate view_table
+
     for pattern in patterns:
-        if pattern.callback.__qualname__.startswith('before_view.'):
-            raise exceptions.DoublePatching(f"View is already patched: {pattern.callback}")
 
-        original_check_permissions = None  # Makes only sense for REST classes
+        logger.debug(f'Traversing pattern: {pattern}')
 
-        # Handle class-based views
-        if is_callback_method(pattern.callback):
-            cls = get_view_class(pattern.callback)
-
-            # Special treatment for REST. We shuffle the original check_permissions
-            # order so that it comes after our own and thus after the preview.
-            if hasattr(cls, 'check_permissions'):
-                original_check_permissions = cls.check_permissions
-
-            # attached view_permissions to class
-            if hasattr(cls, 'view_permissions'):
-                view_permissions = parse_view_permissions(cls.view_permissions)
-                for view_name, permissions in view_permissions.items():
-                    if hasattr(cls, view_name):
-                        view = getattr(cls, view_name)
-                        view_table.append((pattern, view_name, cls, view, view_permissions[view_name], original_check_permissions))
-                    else:
-                        raise Misconfigured(f"Specified view '{view_name}' in view_permissions for class '{cls.__name__}' but class has no such method")
-
-            # TODO: Also look in settings.
-            pass
-
-            # REST decorated methods
-            for resource_name in dir(cls):
-                resource = getattr(cls, resource_name)
-                if hasattr(resource, 'view_permissions'): # == it was decorated
-                    view_table.append((pattern, resource_name, cls, resource, resource.view_permissions, original_check_permissions))
+        # REST methods + functions. The functions end up being classes and behave excactly the same.
+        if is_callback_rest_function(pattern.callback):
 
             # REST functions
-            if is_callback_rest_function(pattern.callback) and hasattr(pattern.callback, 'view_permissions'):
-                cls = pattern.callback.cls
+            if is_callback_rest_function(pattern.callback) and hasattr(pattern.callback, '_view_permissions'):
+                cls = get_view_class(pattern.callback)
+                cls.dispatch = before_dispatch(cls.dispatch)
 
-                if hasattr(cls, 'check_permissions'):
-                    original_check_permissions = cls.check_permissions
+        # Add pre_dispatch hooks for REST methods since patching needs
+        # to be done at runtime.
+        elif is_callback_method(pattern.callback):
+            cls = get_view_class(pattern.callback)
+            cls.dispatch = before_dispatch(cls.dispatch)
 
-                for view_name in HTTP_VERBS:
-                    if not hasattr(cls, view_name):
-                        continue
-                    # NOTE: cls.get == cls.post since a func dealing with both
-                    view = getattr(cls, view_name)
-                    view_table.append((pattern, view_name, cls, view, pattern.callback.view_permissions, original_check_permissions))
-
-        # Handle vanilla function views
-        elif hasattr(pattern.callback, 'view_permissions'):
-            view = pattern.callback
-            view_table.append((pattern, view.__name__, None, view, view.view_permissions, original_check_permissions))
+        # Patch non
+        elif hasattr(pattern.callback, '_view_permissions'):
+            print('**** FUNCTION PATCH *******')
+            pattern.callback = before_view(
+                view=pattern.callback,
+                view_permissions=pattern.callback._view_permissions,
+                is_method=False,
+                view_instance=None,
+                original_check_permissions=None,
+            )
 
         else:
-            # Vanilla undecorated function - do nothing. Ideally we would want to
-            # add all views to the view_table. However this is impossible since there
-            # is no way to figure out all the views of a class and thus patch them.
-            pass
-
-    # Populate global VIEW_TABLE. Note that VIEW_TABLE only holds views have been
-    # explicitly
-    global VIEW_TABLE
-    VIEW_TABLE = {}
-    for items in view_table:
-        VIEW_TABLE[items[3]] = {
-            'pattern': items[0],
-            'view_class': items[2],
-            'view': items[3],
-            'permissions': items[4],
-        }
-    # Ensure full + relpath both include the changes
-    sys.modules[__name__].VIEW_TABLE = VIEW_TABLE
-    sys.modules['rest_framework_roles.%s' % __name__] = sys.modules[__name__]
-
-    # Validate table
-    for pattern, view_name, cls, view, view_permissions, original_check_permissions in view_table:
-        assert type(view_name) is str
-        assert type(view_permissions) is list, f"'view_permissions' must be list, got '{view_permissions}'"
-        for item in view_permissions:
-            assert type(item) is tuple, f"Expected each item in 'view_permissions' to be tutple. Got '{item}'"
-        assert original_check_permissions is None or hasattr(original_check_permissions, '__call__')
-
-    # Perform patching
-    for pattern, view_name, cls, view, view_permissions, original_check_permissions in view_table:
-        view.view_permissions = view_permissions
-
-        # Ensure REST's check_permissions is always going to pass if called before before_view
-        if original_check_permissions:
-            cls.check_permissions = dummy_check_permissions
-
-        if cls:
-            before = before_view(view, is_method=True, original_check_permissions=original_check_permissions)
-        else:
-            before = before_view(view, is_method=False, original_check_permissions=original_check_permissions)
-
-        before._view_permissions = view_permissions  # we attach permissions to before_view as well
-                                                     # to make debugging easier
-        if cls:
-            setattr(cls, view_name, before)
-        else:
-            pattern.callback = before
+            logger.debug(f"Leaving view {pattern.callback} unpatched")
 
 
 def get_urlpatterns(urlconf=None):
