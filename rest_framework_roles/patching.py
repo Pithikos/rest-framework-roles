@@ -59,7 +59,7 @@ from django.conf import settings
 from django.utils.functional import empty
 from django.core.exceptions import PermissionDenied
 
-from rest_framework_roles.permissions import check_permissions
+from rest_framework_roles import permissions
 from rest_framework_roles.parsing import parse_view_permissions
 from rest_framework_roles.exceptions import Misconfigured
 
@@ -195,7 +195,7 @@ def before_view(view, view_permissions, is_method, view_instance, original_check
 
         # Try to find the right permission checks for the view
         # import IPython; IPython.embed(using=False)
-        granted = check_permissions(request, view, self, view_permissions)
+        granted = permissions.check_permissions(request, view, self, view_permissions)
 
         # Role matched and permission granted
         if granted:
