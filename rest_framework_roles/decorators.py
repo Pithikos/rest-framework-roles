@@ -1,5 +1,6 @@
 from rest_framework_roles import parsing
 from rest_framework_roles import exceptions
+from rest_framework_roles import patching
 
 DEFAULT_COST = 0
 DEFAULT_EXPENSIVE = 50
@@ -24,6 +25,14 @@ def allowed(*roles):
         fn._view_permissions = []
         for role in roles:
             fn._view_permissions.append((True, role_checkers[role]))
+        fn._view_permissions.append((False, True))  # disallow anyone else
+
+        # SPECIAL CASE: REST function creates a class with metaprogramming. To adhere to that
+        # we need to patch the metaprogrammatically created class
+        if patching.is_callback_rest_function(fn):
+            fn.cls._view_permissions = {
+                fn.__name__: fn._view_permissions
+            }
 
         return fn
     return wrapped
@@ -46,6 +55,13 @@ def disallowed(*roles):
         fn._view_permissions = []
         for role in roles:
             fn._view_permissions.append((False, role_checkers[role]))
+
+        # SPECIAL CASE: REST function creates a class with metaprogramming. To adhere to that
+        # we need to patch the metaprogrammatically created class
+        if patching.is_callback_rest_function(fn):
+            fn.cls._view_permissions = {
+                fn.__name__: fn._view_permissions
+            }
 
         return fn
     return wrapped
