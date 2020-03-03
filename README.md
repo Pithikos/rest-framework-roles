@@ -8,9 +8,9 @@ Role-based permissions for Django and Django REST Framework (functions or classe
 
   - Data-driven declarative permissions for humans.
   - Full decoupling from views and models & implementation agnostic.
-  - Works with view redirections.
-  - Easy integration with existing projects.
-  - Easy optimization by decorating expensive operations as such.
+  - View redirection simply works.
+  - Easy gradual integration with existing projects.
+  - Easy optimization with decorators.
 
 
 Install
