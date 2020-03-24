@@ -297,7 +297,6 @@ def patch(urlconf=None):
 
         # Patch non
         elif hasattr(pattern.callback, '_view_permissions'):
-            print('**** FUNCTION PATCH *******')
             pattern.callback = before_view(
                 view=pattern.callback,
                 view_permissions=pattern.callback._view_permissions,
