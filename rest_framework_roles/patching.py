@@ -102,9 +102,17 @@ def before_dispatch(dispatch):
         if hasattr(self, 'view_permissions'):
             self._view_permissions = parse_view_permissions(self.view_permissions)
 
+        # Dummify check_permissions for REST. This is needed if we patch the handler
+        # or another viewset method.
+        if hasattr(self, 'check_permissions'):
+            original_check_permissions = self.check_permissions
+            self.check_permissions = dummy_check_permissions
+        else:
+            original_check_permissions = None
+
         # Patch handler (as per Django and REST shared logic)
         verb = request.method.lower()
-        if verb in self.http_method_names:
+        if hasattr(self, verb):
             handler = getattr(self, verb)
 
             # Get permissions for handle
@@ -127,13 +135,6 @@ def before_dispatch(dispatch):
 
             else:
                 logger.debug(f'No _view_permissions found for handler {handler} ({verb})')
-
-            # Patch check_permissions for REST
-            if hasattr(self, 'check_permissions'):
-                original_check_permissions = self.check_permissions
-                self.check_permissions = dummy_check_permissions
-            else:
-                original_check_permissions= None
 
             # Patch view
             if handler_permissions:
