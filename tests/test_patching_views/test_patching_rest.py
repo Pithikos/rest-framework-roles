@@ -89,6 +89,13 @@ class RestClassMixed2(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
         return self.list(request, *args, **kwargs)
 
 
+class RestClassMixedViewset(drf.mixins.ListModelMixin, drf.viewsets.GenericViewSet):
+    """ Difference with GenericAPIView mixins, is that this can be used with router """
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    view_permissions = {'list': {'anon': True}}  # Super permissive since we test patching, not permissions
+
+
 class RestClassModel(drf.viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
@@ -101,6 +108,7 @@ class RestClassModel(drf.viewsets.ModelViewSet):
 
 router = drf.routers.DefaultRouter()
 router.register(r'users', RestClassModel, basename='user')
+router.register(r'listed_users', RestClassMixedViewset, basename='listed_users')
 
 
 urlpatterns = [
@@ -203,6 +211,21 @@ def test_class_instance_patched(db, rest_resolver, client):
         client.get('/users/')
 
     assert not is_preview_patched(RestClassModel.list)
+
+
+@pytest.mark.urls(__name__)
+def test_calling_unmixed_verb(db, rest_resolver, client):
+    """
+    For a viewset that only allows certain HTTP verbs, 405 should be given back as expected
+    """
+
+    # Normal case
+    response = client.get('/listed_users/')
+    assert response.status_code == 200
+
+    # Calling patch (which is not defined)
+    response = client.patch('/listed_users/')
+    assert response.status_code == 405
 
 
 class TestCheckPermissionsFlow():
