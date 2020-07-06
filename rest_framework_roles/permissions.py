@@ -6,16 +6,10 @@ import logging
 import collections
 from django.core.exceptions import PermissionDenied
 
-from rest_framework_roles.decorators import DEFAULT_EXPENSIVE, role_checker
 from rest_framework_roles import exceptions
 
 
 logger = logging.getLogger(__name__)
-
-
-@role_checker(cost=DEFAULT_EXPENSIVE)
-def is_self(request, view):
-    return request.user == view.get_object()
 
 
 def bool_role(request, view, role):

@@ -71,7 +71,7 @@ when other 3rd party libraries are used.
 views.py
 ```python
 from rest_framework.viewsets import ModelViewSet
-from rest_framework_roles.permissions import is_self
+from rest_framework_roles.granting import is_self
 
 
 class UserViewSet(ModelViewSet):
@@ -110,7 +110,7 @@ to update their email.
 
 views.py
 ```python
-from rest_framework_roles.permissions import is_self
+from rest_framework_roles.granting import is_self
 from rest_framework_roles import roles
 
 
