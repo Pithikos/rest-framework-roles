@@ -56,8 +56,6 @@ def check_permissions(request, view, view_instance, view_permissions=None):
         except AttributeError:
             raise Exception("No passed view_permissions and no attached _view_permissions found")
 
-    # import IPython; IPython.embed(using=False)
-
     # Determine permissions
     for permissions in view_permissions:
         granted, roles = permissions[0], permissions[1:]
