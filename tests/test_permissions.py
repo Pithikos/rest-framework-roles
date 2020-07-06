@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 
 from rest_framework_roles.roles import is_admin, is_user, is_anon
-from rest_framework_roles.granting import is_self
+from rest_framework_roles.granting import is_self, anyof, allof
 from rest_framework_roles.decorators import allowed
 from rest_framework_roles import patching
 from .fixtures import admin, user, anon
@@ -45,7 +45,7 @@ class UserViewSet(drf.viewsets.ModelViewSet):
     view_permissions = {
         'retrieve': {'user': is_self, 'admin': True},
         'update': {
-            'user': (is_self, not_updating_email),
+            'user': allof(is_self, not_updating_email),
             'admin': True,
         },
         'create': {'anon': True},
