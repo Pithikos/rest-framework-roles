@@ -5,6 +5,7 @@ Permissions are checked mainly by checking if a _view_permissions exist for give
 import logging
 from django.core.exceptions import PermissionDenied
 
+from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.granting import GrantChecker, bool_granted, TYPE_FUNCTION
 from rest_framework_roles import exceptions
 
@@ -54,11 +55,14 @@ def check_permissions(request, view, view_instance, view_permissions=None):
                 #     This is since if this rule doesn't grant permission, the next could.
                 #   - We don't return False here, since *pre_view* will perform any other checks.
                 #
-                if type(granted) is bool and granted:
-                    return True
+                if type(granted) is bool:
+                    if granted:
+                        return True
                 elif type(granted) is TYPE_FUNCTION:
                     if bool_granted(request, view, granted, view_instance):
                         return True
                 elif type(granted) is GrantChecker:
                     if granted.evaluate(request, view, view_instance):
                         return True
+                else:
+                    raise Misconfigured("From v0.4.0+ you need to use 'anyof', 'allof' or similar for multiple grant checks")

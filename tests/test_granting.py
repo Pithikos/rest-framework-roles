@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 
+from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.roles import is_admin, is_user, is_anon
 from rest_framework_roles.granting import is_self, anyof, allof
 from rest_framework_roles.decorators import allowed
@@ -43,10 +44,11 @@ class UserViewSet(drf.viewsets.ModelViewSet):
     permission_classes = []
 
     view_permissions = {
-        'retrieve': {
+        'list': {
             'user': anyof(False, True),
             'admin': allof(True, True),
-        },
+            'anon': (True, True),  # Before v0.4.0 syntax
+        }
     }
 
 
@@ -66,3 +68,10 @@ class TestUserAPI():
     def test_only_admin_can_list_users(self, user, anon, admin):
         assert_allowed(user, get='/users/')
         assert_allowed(admin, get='/users/')
+
+    def test_raises_error_on_simple_sequence(self, client):
+        """
+        Before v0.4.0 we allowed a sequence of grant checks. We need to catch those.
+        """
+        with pytest.raises(Misconfigured):
+            client.get('/users/')
