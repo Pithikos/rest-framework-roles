@@ -31,7 +31,8 @@ class VerifyVersionCommand(install):
     description = 'verify that the git tag matches our version'
 
     def run(self):
-        if get_tag_version() != VERSION:
+        tag_version = get_tag_version()
+        if tag_version and tag_version != VERSION:
             sys.exit(f"Git tag: {tag} does not match the version of this app: {VERSION}")
 
 
