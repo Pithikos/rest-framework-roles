@@ -18,6 +18,8 @@ VERSION = '0.4.1'
 def get_tag_version():
     cmd = 'git tag --points-at HEAD'
     versions = subprocess.check_output(shlex.split(cmd)).splitlines()
+    if not versions:
+        return None
     if len(versions) != 1:
         sys.exit(f"Trying to get tag via git: Expected excactly one tag, got {len(versions)}")
     version = versions[0].decode()
@@ -31,7 +33,8 @@ class VerifyVersionCommand(install):
     description = 'verify that the git tag matches our version'
 
     def run(self):
-        if get_tag_version() != VERSION:
+        tag_version = get_tag_version()
+        if tag_version and tag_version != VERSION:
             sys.exit(f"Git tag: {tag} does not match the version of this app: {VERSION}")
 
 
