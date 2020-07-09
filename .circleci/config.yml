@@ -40,9 +40,12 @@ jobs:
             echo -e "username = Pithikos" >> ~/.pypirc
             echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
       - run:
-          name: upload to cheeseshop
+          name: upload to cheeseshop if a tag found
           command: |
-            python -m twine upload dist/*
+            tag=`git tag --points-at HEAD`
+            if [ $tag ]; then
+              python -m twine upload dist/*
+            fi
 
 workflows:
   test:
