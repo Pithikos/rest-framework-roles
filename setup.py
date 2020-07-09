@@ -18,6 +18,8 @@ VERSION = '0.4.1'
 def get_tag_version():
     cmd = 'git tag --points-at HEAD'
     versions = subprocess.check_output(shlex.split(cmd)).splitlines()
+    if not versions:
+        return None
     if len(versions) != 1:
         sys.exit(f"Trying to get tag via git: Expected excactly one tag, got {len(versions)}")
     version = versions[0].decode()
