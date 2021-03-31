@@ -45,7 +45,7 @@ Usage
 -----
 
 
-First you need to define some roles. Below we use the ones already working with Django out-of-the-box.
+First you need to define some **role checkers**. Below we use the ones already working with Django out-of-the-box.
 
 roles.py
 ```python
@@ -59,7 +59,7 @@ ROLES = {
 }
 ```
 
-`is_admin`, `is_user` and `is_anon` are simple functions that take `request` and `view` as arguments and return a boolean - denoting if a user request matches a role.
+A role checking function is just a function that takes a `request` and `view` as arguments and returns a boolean - signifying if a user request matches a specific role.
 
 We now need to define when permission should be granted for a matching role.
 
