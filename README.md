@@ -72,12 +72,14 @@ class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
+    # you can define permissions at the view level
     view_permissions = {
         'retrieve': {'user': is_self, 'admin': True},
         'create': {'anon': True},
         'list': {'admin': True},
     }
 
+    # you can also define permissions with a decorator
     @allowed('admin', 'user')
     @action(detail=False, methods=['get'])
     def me(self, request):
@@ -85,10 +87,7 @@ class UserViewSet(ModelViewSet):
         return self.retrieve(request)
 ```
 
-In this example only anonymous users can create a new user account. Admin can retrieve any user's acount and list users. Users can only retrieve their own information.
-
- You can use any of **@allowed**, **@disallowed** or **view_permissions** to specify permissions.
-
+Permissions can be set either with with **view_permissions** at the view class level, or by decorating view functions/methods with  **@allowed** and **@disallowed**.
 
 
 How it works
@@ -134,7 +133,7 @@ In this case the user can only update their information as long as they don't up
 Role checking order
 -------------------
 
-Roles are checked in order of cost.
+Roles are checked in order of cost (the less costly first).
 
 
 ```python
@@ -159,6 +158,6 @@ def is_creator(request, view):
     return False
 ```
 
-In this example, roles with cost 0 would be checked first, and lastly the *creator* role would be checked.
+This allows an infinite number of ordering your role checking which is helpful when you have checks that are aggressive on the database. 
 
-> Note this is similar to Django REST's `check_permissions` and `check_object_permissions` but with much more room for refinement since you can have arbitrary number of costs.
+> The cost is a bit similar to Django REST Framework's two permissions checkers (1) `check_permissions` and (2) `check_object_permissions`. However this implementation is much more generic and scales better for complex scenarios.
