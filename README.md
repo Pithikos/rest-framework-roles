@@ -3,7 +3,7 @@ REST Framework Roles
 
 [![rest-framework-roles](https://circleci.com/gh/Pithikos/rest-framework-roles.svg?style=svg)](https://circleci.com/gh/Pithikos/rest-framework-roles) [![PyPI version](https://badge.fury.io/py/rest-framework-roles.svg)](https://badge.fury.io/py/rest-framework-roles)
 
-Every web application at the core relies on users and users' permissions. Unfortunately permissions are not as straighforward in Django and can easily bog down development. That's where this project comes in. With REST Framework Roles you can easily add or edit permissions (even mid-project) in the easiest way without standing in the way for more advanced scenarios. Best of all, all this without cluttering the views and models with superfluous code.
+Every web application at the core relies on users and users' permissions. Unfortunately permissions are not as straighforward in Django and can easily bog down development. That's where this project comes in. With REST Framework Roles you can easily add or edit permissions (even mid-project) in the easiest way without standing in the way for more advanced scenarios. Best of all, views and models can stay lean and decoupled from permission-specific code.
 
 Features
 
