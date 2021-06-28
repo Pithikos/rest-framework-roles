@@ -3,14 +3,15 @@ REST Framework Roles
 
 [![rest-framework-roles](https://circleci.com/gh/Pithikos/rest-framework-roles.svg?style=svg)](https://circleci.com/gh/Pithikos/rest-framework-roles) [![PyPI version](https://badge.fury.io/py/rest-framework-roles.svg)](https://badge.fury.io/py/rest-framework-roles)
 
-Aren't you sick and tired of the complexity and non-declarative nature of permissions in Django and REST Framework?
+Every web application at the core relies on users and users' permissions. Unfortunately permissions are not as straighforward in Django and can easily bog down development. That's where this project comes in. With REST Framework Roles you can easily add or edit permissions (even mid-project) in the easiest way without standing in the way for more advanced scenarios. Best of all, all this without cluttering the views and models with superfluous code.
 
-This framework will let you:
+Features
 
-  - Decouple permissions from views and models.
-  - Declaratively define permissions in the view.
-  - Make redirection permissions to just work!
-  - Mix declarative permissions and defacto Django permissions.
+  - Decoupled permissions from views and models.
+  - Intuitive declarative permission definitions at view level.
+  - View redirections respect the permissions (in contrast of default behaviour).
+  - If you want to use both this library and default Django permissions, that's fine too!
+  - Support for both vanilla Django and Django REST Framework.
 
 
 Install
