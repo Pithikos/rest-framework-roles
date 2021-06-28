@@ -9,7 +9,7 @@ Features
 
   - Decoupled permissions from views and models.
   - Intuitive declarative permission definitions at view level.
-  - View redirections respect the permissions (in contrast of default behaviour).
+  - Chaining views actually respect the permissions, in contrast to Django's default behaviour.
   - If you want to use both this library and default Django permissions, that's fine too!
   - Support for both vanilla Django and Django REST Framework.
 
