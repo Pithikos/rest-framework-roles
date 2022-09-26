@@ -1,5 +1,7 @@
-djangorestframework
-cerberus
+djangorestframework==3.11.0
+Django==3.0.3
+
+# Dev
 pytest
 pytest-django
 twine
