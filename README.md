@@ -107,12 +107,14 @@ The library is using a permission table internally but at a high level the behav
 Note in the snippet below, admin is a user so he would match both roles. However the first rule will
 not grant permission, while the second will.
 
-    view_permissions = {
-        'retrieve': {'user': is_self, 'admin': True},
-    }
-
+```python
+  view_permissions = {
+      'retrieve': {'user': is_self, 'admin': True},
+  }
+```
 For more **complex scenarios** you can specify multiple functions to be checked when determining if permission should be granted.
 
+```python
     from rest_framework_roles.granting import allof
 
     def not_updating_email(request, view):
@@ -125,7 +127,7 @@ For more **complex scenarios** you can specify multiple functions to be checked 
               'admin': True,
             },
         }
-    ..
+```
 
 In this case the user can only update their information as long as they don't update their email.
 
