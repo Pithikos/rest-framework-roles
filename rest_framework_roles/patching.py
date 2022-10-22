@@ -188,18 +188,11 @@ def before_view(handler, handler_permissions, is_method, view_instance, original
         # Fallback for all other cases
         raise PermissionDenied('Permission denied for user.')
 
-    def wrapped_function(request, *args, **kwargs):
-        pre_view(handler, request, None)
-        return handler(request, *args, **kwargs)
-
     def wrapped_method(request, *args, **kwargs):
         pre_view(handler, request, view_instance)
         return handler(request, *args, **kwargs)
 
-    if is_method:
-        return wrapped_method
-    else:
-        return wrapped_function
+    return wrapped_method
 
 
 # ------------------------------------------------------------------------------
