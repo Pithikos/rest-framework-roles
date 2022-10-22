@@ -40,7 +40,6 @@ def not_updating_email(request, view):
 class UserViewSet(drf.viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    permission_classes = []
 
     view_permissions = {
         'retrieve': {'user': is_self, 'admin': True},

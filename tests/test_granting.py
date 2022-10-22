@@ -34,14 +34,9 @@ ROLES = {
 settings.REST_FRAMEWORK_ROLES['roles'] = f"{__name__}.ROLES"
 
 
-def not_updating_email(request, view):
-    return 'email' not in request.data
-
-
 class UserViewSet(drf.viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    permission_classes = []
 
     view_permissions = {
         'list': {
