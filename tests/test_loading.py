@@ -1,6 +1,6 @@
 import pytest
 
-from rest_framework_roles.parsing import validate_config, load_roles, load_view_permissions
+from rest_framework_roles.parsing import validate_config, load_roles
 from rest_framework_roles.roles import is_admin, is_anon
 
 
@@ -25,10 +25,6 @@ VALID_VIEW_PERMISSIONS_PATH = f'{__name__}.VALID_VIEW_PERMISSIONS'
 
 def test_load_roles_by_dotted_path():
     assert load_roles({'roles': VALID_ROLES_PATH, 'view_permissions': None})
-
-
-def test_load_view_permissions_by_dotted_path():
-    assert load_view_permissions({'roles': None, 'view_permissions': VALID_VIEW_PERMISSIONS_PATH})
 
 
 def test_validate_config():

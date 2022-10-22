@@ -55,20 +55,6 @@ def validate_config(config):
     #     raise django_exceptions.ImproperlyConfigured("Missing 'view_permissions'")
 
 
-def load_view_permissions(config=None):
-    """
-    Load view permissioins from config
-    """
-    if not config:
-        from django.conf import settings
-        config = settings.REST_FRAMEWORK_ROLES
-    validate_config(config)
-    view_permissions = config['view_permissions']
-    if isinstance(view_permissions, str):
-        view_permissions = import_string(view_permissions)
-    return view_permissions
-
-
 def load_roles(config=None):
     """
     Load roles from config
@@ -162,9 +148,3 @@ def parse_view_permissions(view_permissions, roles=None):
         rules.sort(key=lambda item: item[1].cost)
 
     return lookup
-
-
-def get_lookup():
-    roles = load_roles()
-    view_permissions = load_view_permissions()
-    return create_lookup(roles, view_permissions)
