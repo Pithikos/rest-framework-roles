@@ -42,7 +42,6 @@ class UserViewSet(drf.viewsets.ModelViewSet):
         'list': {
             'user': anyof(False, True),
             'admin': allof(True, True),
-            'anon': (True, True),  # Before v0.4.0 syntax
         }
     }
 
@@ -63,10 +62,3 @@ class TestUserAPI():
     def test_only_admin_can_list_users(self, user, anon, admin):
         assert_allowed(user, get='/users/')
         assert_allowed(admin, get='/users/')
-
-    def test_raises_error_on_simple_sequence(self, client):
-        """
-        Before v0.4.0 we allowed a sequence of grant checks. We need to catch those.
-        """
-        with pytest.raises(Misconfigured):
-            client.get('/users/')
