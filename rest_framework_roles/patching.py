@@ -95,7 +95,7 @@ def is_rest_function(self):
 def before_dispatch(dispatch):
     def pre_dispatch(self, request, *args, **kwargs):
         """
-        Main purpose is to patch instance methods
+        Note that request.user not populated at this point
         """
 
         # Dummify check_permissions for REST. This is needed if we patch the handler
@@ -110,22 +110,18 @@ def before_dispatch(dispatch):
         verb = request.method.lower()
         if hasattr(self, verb):
             handler = getattr(self, verb)
-
-            # Get permissions for handle
-            # NOTE: handler can e.g. be self.post but bound to 'create'
             handler_permissions = None
+
+            # Get handler permissions
+            # NOTE: handler can e.g. be self.post but bound to 'create'
             if hasattr(handler, '_view_permissions'):
                 handler_permissions = handler._view_permissions
-
-            # REST CLASS
             elif hasattr(self, '_view_permissions'):
+                # REST CLASS
                 if handler.__name__ in self._view_permissions:
                     handler_permissions = self._view_permissions[handler.__name__]
                 elif verb in self._view_permissions:
                     handler_permissions = self._view_permissions[verb]
-
-            else:
-                logger.debug(f'No _view_permissions found for handler {handler} ({verb})')
 
             # Patch view regardless if view_permissions found
             if handler_permissions:
@@ -167,6 +163,10 @@ def before_view(handler, handler_permissions, is_method, view_instance, original
     """
 
     def pre_view(handler, request, self):
+        """
+        Permissions MUST be checked at this point and not earlier, since request.user
+        is populated properly at this point
+        """
         logger.debug('Checking permissions..')
 
         # Try to find the right permission checks for the view
