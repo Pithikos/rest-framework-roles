@@ -49,7 +49,7 @@ def is_preview_patched(fn):
 
 
 def is_predispatch_patched(fn):
-    return 'before_dispatch' in str(fn)
+    return 'wrapped_dispatch' in str(fn)
 
 
 def has_view_permissions(fn):

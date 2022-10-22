@@ -92,7 +92,7 @@ def is_rest_function(self):
     return self.__class__.__qualname__ == 'WrappedAPIView'
 
 
-def before_dispatch(dispatch):
+def wrapped_dispatch(dispatch):
     def pre_dispatch(self, request, *args, **kwargs):
         """
         Note that request.user not populated at this point
@@ -260,7 +260,7 @@ def patch(urlconf=None):
         # Add pre_dispatch hooks for REST methods since patching needs to be done at runtime.
         cls = get_view_class(pattern.callback)
         try:
-            cls.dispatch = before_dispatch(cls.dispatch)
+            cls.dispatch = wrapped_dispatch(cls.dispatch)
         except AttributeError as e:
             raise Exception(f"Can't patch view for {pattern}. Are you sure it's a class-based view?")
         
