@@ -25,11 +25,7 @@ def test_is_callback_method():
     # We know that only django_function_view is not a method
     # For REST every view is a method, including decorated functions.
     # import rest_framework
-    assert not is_callback_method(get_pattern('django_function_view_decorated').callback)
-    assert not is_callback_method(get_pattern('django_function_view_undecorated').callback)
     assert is_callback_method(get_pattern('django_class_view').callback)
-    assert is_callback_method(get_pattern('rest_function_view_decorated').callback)
-    assert is_callback_method(get_pattern('rest_function_view_undecorated').callback)
     assert is_callback_method(get_pattern('rest_class_view').callback)
     assert is_callback_method(get_pattern('rest_class_viewset').callback)
     assert is_callback_method(get_pattern('rest_class_mixed').callback)

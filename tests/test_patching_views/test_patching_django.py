@@ -42,8 +42,6 @@ class DjangoView(django.views.generic.ListView):
 
 
 urlpatterns = [
-    path('django_function_view_decorated', django_function_view_decorated),
-    path('django_function_view_undecorated', django_function_view_undecorated),
     path('django_class_view', DjangoView.as_view()),
 ]
 
@@ -57,23 +55,6 @@ def django_resolver():
     patching.patch(urlconf)
     resolver = get_resolver(urlconf)
     return resolver
-
-
-@pytest.mark.urls(__name__)
-def test_patching_function_views(django_resolver, client):
-    # Normally we patch only views that are targeted by directives (e.g. decorators).
-    # Vanilla Django function views are the exception, and are patched directly
-    # regardless, in order to simplify things.
-
-    with patch('rest_framework_roles.permissions.check_permissions') as check_permissions:
-        resp = client.get('/django_function_view_decorated')
-        assert resp.status_code != 404
-        assert check_permissions.called
-
-    with patch('rest_framework_roles.permissions.check_permissions') as check_permissions:
-        resp = client.get('/django_function_view_undecorated')
-        assert resp.status_code != 404
-        assert not check_permissions.called
 
 
 @pytest.mark.urls(__name__)
