@@ -1,0 +1,12 @@
+1.0.0
+=====
+  
+  - Drop support for function views
+
+
+0.4.1
+=====
+
+  - Support for Django 3
+  - Support for Django REST Framework
+  - Support methods and functions

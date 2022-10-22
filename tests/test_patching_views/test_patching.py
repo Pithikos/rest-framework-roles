@@ -8,12 +8,12 @@ from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view_dec
 from .test_patching_rest import urlpatterns as rest_urlpatterns
 from .test_patching_django import django_function_view_decorated, django_function_view_undecorated
 from .test_patching_django import urlpatterns as django_urlpatterns
-from rest_framework_roles.patching import is_callback_method, get_view_class, before_view, is_callback_rest_function
+from rest_framework_roles.patching import is_callback_method, get_view_class, before_view
 
 # NOTE: Do not patch in this module. It will double-patch and give an error.
 
 
-urlpatterns = django_urlpatterns + rest_urlpatterns
+urlpatterns = rest_urlpatterns + django_urlpatterns
 
 def get_pattern(name):
     for pattern in urlpatterns:
@@ -33,18 +33,6 @@ def test_is_callback_method():
     assert is_callback_method(get_pattern('rest_class_view').callback)
     assert is_callback_method(get_pattern('rest_class_viewset').callback)
     assert is_callback_method(get_pattern('rest_class_mixed').callback)
-
-
-def test_is_callback_rest_function():
-    assert is_callback_rest_function(rest_function_view_decorated)
-    assert is_callback_rest_function(rest_function_view_undecorated)
-
-    assert not is_callback_rest_function(django_function_view_decorated)
-    assert not is_callback_rest_function(django_function_view_undecorated)
-    assert not is_callback_rest_function(RestAPIView.view_unpatched)
-    assert not is_callback_rest_function(RestAPIView.get)
-    assert not is_callback_rest_function(DjangoView.as_view())
-    assert not is_callback_rest_function(RestAPIView.as_view())
 
 
 def test_get_view_class():

@@ -4,7 +4,7 @@ can be more involved.
 
 Below you can see the overall design on the patching process.
 
-(Django patched)            (REST)                 (REST patched)
+(Django patched)           (REST)                 (REST patched)
       |                       |                          |
 pre_dispatch --.              |                    pre_dispatch --.
                |              |                                   |
@@ -121,11 +121,6 @@ def before_dispatch(dispatch):
             if hasattr(handler, '_view_permissions'):
                 handler_permissions = handler._view_permissions
 
-            # REST FUNCTION: Rest function. We use the class-based _view_permissions populated for the specific function
-            elif is_rest_function(self):
-                function_name = self.__class__.__name__
-                handler_permissions = self._view_permissions[function_name]
-
             # REST CLASS
             elif hasattr(self, '_view_permissions'):
                 if handler.__name__ in self._view_permissions:
@@ -223,11 +218,6 @@ def is_callback_method(callback):
     return False
 
 
-def is_callback_rest_function(callback):
-    # REST functions end up being methods after metaprogramming
-    return is_callback_method(callback) and callback.__qualname__ == 'WrappedAPIView'
-
-
 def dummy_check_permissions(self, *args):
     """
     Dummy that replaces the REST class' check_permissions in order to not break
@@ -263,11 +253,7 @@ def patch(urlconf=None):
 
     patch ---- REST method ----.
          |                      --- patch dispatch ----> patch view
-         |'--- Django method --/                         /
-         |                    /                         /
-         |'--- REST func  ---'                         /
-         |                                            /
-         '---- Django func --------------------------'
+          '--- Django method --'
     """
 
     view_table = []  # list of (<pattern>, <viewname>, <class>, <view>, <permissions>, <original check_permissions>)
@@ -282,17 +268,9 @@ def patch(urlconf=None):
 
         logger.debug(f'Traversing pattern: {pattern}')
 
-        # REST methods + functions. The functions end up being classes and behave excactly the same.
-        if is_callback_rest_function(pattern.callback):
-
-            # REST functions
-            if is_callback_rest_function(pattern.callback) and hasattr(pattern.callback, '_view_permissions'):
-                cls = get_view_class(pattern.callback)
-                cls.dispatch = before_dispatch(cls.dispatch)
-
         # Add pre_dispatch hooks for REST methods since patching needs
         # to be done at runtime.
-        elif is_callback_method(pattern.callback):
+        if is_callback_method(pattern.callback):
             cls = get_view_class(pattern.callback)
             cls.dispatch = before_dispatch(cls.dispatch)
 

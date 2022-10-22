@@ -3,9 +3,10 @@ REST Framework Roles
 
 [![rest-framework-roles](https://circleci.com/gh/Pithikos/rest-framework-roles.svg?style=svg)](https://circleci.com/gh/Pithikos/rest-framework-roles) [![PyPI version](https://badge.fury.io/py/rest-framework-roles.svg)](https://badge.fury.io/py/rest-framework-roles)
 
-Role-based permissions for Django and Django REST Framework (functions or classes).
+Role-based permissions for Django REST Framework (or vanilla Django).
 
-  - Decouple permissions from views and models.
+  - Support for class-based views both in Django and DRF.
+  - Keep views and models light.
   - Easy declarative configuration (still allowing complex scenarios).
   - View redirection works out-of-the-box.
   - Gradual integration with existing projects.
