@@ -98,10 +98,6 @@ def before_dispatch(dispatch):
         Main purpose is to patch instance methods
         """
 
-        # Attach _view_permissions to body of class
-        if hasattr(self, 'view_permissions'):
-            self._view_permissions = parse_view_permissions(self.view_permissions)
-
         # Dummify check_permissions for REST. This is needed if we patch the handler
         # or another viewset method.
         if hasattr(self, 'check_permissions'):
@@ -145,14 +141,13 @@ def before_dispatch(dispatch):
         # ---------------------------------------------------------------
 
         # In order to allow redirections we need to patch all methods of instance as per _view_permissions
-        if hasattr(self, '_view_permissions') and not is_rest_function(self):
-            for handler_name, handler_permissions in self._view_permissions.items():
-                if hasattr(self, handler_name):
-                    handler = getattr(self, handler_name)
-                    before = before_view(handler, handler_permissions, is_method=True, view_instance=self, original_check_permissions=original_check_permissions)
-                    setattr(self, handler_name, before)
-                else:
-                    raise Misconfigured(f"Specified view '{handler_name}' in view_permissions for class '{self.__name__}' but class has no such method")
+        for handler_name, handler_permissions in self._view_permissions.items():
+            if hasattr(self, handler_name):
+                handler = getattr(self, handler_name)
+                before = before_view(handler, handler_permissions, is_method=True, view_instance=self, original_check_permissions=original_check_permissions)
+                setattr(self, handler_name, before)
+            else:
+                raise Misconfigured(f"Specified view '{handler_name}' in view_permissions for class '{self.__name__}' but class has no such method")
 
         return dispatch(self, request, *args, **kwargs)
 
@@ -262,24 +257,18 @@ def patch(urlconf=None):
 
         logger.debug(f'Traversing pattern: {pattern}')
 
-        # Add pre_dispatch hooks for REST methods since patching needs
-        # to be done at runtime.
-        if is_callback_method(pattern.callback):
-            cls = get_view_class(pattern.callback)
+        # Add pre_dispatch hooks for REST methods since patching needs to be done at runtime.
+        cls = get_view_class(pattern.callback)
+        try:
             cls.dispatch = before_dispatch(cls.dispatch)
-
-        # Patch non
-        elif hasattr(pattern.callback, '_view_permissions'):
-            pattern.callback = before_view(
-                handler=pattern.callback,
-                handler_permissions=pattern.callback._view_permissions,
-                is_method=False,
-                view_instance=None,
-                original_check_permissions=None,
-            )
-
+        except AttributeError as e:
+            raise Exception(f"Can't patch view for {pattern}. Are you sure it's a class-based view?")
+        
+        # Generate permissions for direct lookup
+        if hasattr(cls, 'view_permissions'):
+            cls._view_permissions = parse_view_permissions(cls.view_permissions)
         else:
-            logger.debug(f"Leaving view {pattern.callback} unpatched")
+            cls._view_permissions = {}
 
 
 def get_urlpatterns(urlconf=None):
