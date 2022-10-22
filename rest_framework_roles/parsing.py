@@ -146,7 +146,7 @@ def parse_view_permissions(view_permissions, roles=None):
             roles_in_view_permissions.add(role)
     for role in roles_in_view_permissions:
         if role not in roles:
-            raise Misconfigured(f"Role '{role}' given but such role not defined")
+            raise Misconfigured(f"Role '{role}' found in view_permissions but such role not defined in ROLES")
 
     # Populate general and instance checkers
     for view_name, permissions in view_permissions.items():

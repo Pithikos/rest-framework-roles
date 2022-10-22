@@ -4,12 +4,13 @@ import sys
 import pytest
 import django
 from django.conf import settings
-from rest_framework_roles.roles import is_admin, is_user
+from rest_framework_roles.roles import is_admin, is_user, is_anon
 
 
 ROLES = {
     'admin': is_admin,
     'user': is_user,
+    'anon': is_anon,
 }
 VIEW_PERMISSIONS = []
 REST_FRAMEWORK_ROLES = {
