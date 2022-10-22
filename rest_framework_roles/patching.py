@@ -131,11 +131,11 @@ def before_dispatch(dispatch):
             else:
                 logger.debug(f'No _view_permissions found for handler {handler} ({verb})')
 
-            # Patch view
+            # Patch view regardless if view_permissions found
             if handler_permissions:
                 before = before_view(
-                    view=handler,
-                    view_permissions=handler_permissions,
+                    handler=handler,
+                    handler_permissions=handler_permissions,
                     is_method=True,
                     view_instance=self,
                     original_check_permissions=original_check_permissions
@@ -146,35 +146,36 @@ def before_dispatch(dispatch):
 
         # In order to allow redirections we need to patch all methods of instance as per _view_permissions
         if hasattr(self, '_view_permissions') and not is_rest_function(self):
-            for view_name, permissions in self._view_permissions.items():
-                if hasattr(self, view_name):
-                    view = getattr(self, view_name)
-                    before = before_view(view, permissions, is_method=True, view_instance=self, original_check_permissions=original_check_permissions)
-                    setattr(self, view_name, before)
+            for handler_name, handler_permissions in self._view_permissions.items():
+                if hasattr(self, handler_name):
+                    handler = getattr(self, handler_name)
+                    before = before_view(handler, handler_permissions, is_method=True, view_instance=self, original_check_permissions=original_check_permissions)
+                    setattr(self, handler_name, before)
                 else:
-                    raise Misconfigured(f"Specified view '{view_name}' in view_permissions for class '{self.__name__}' but class has no such method")
+                    raise Misconfigured(f"Specified view '{handler_name}' in view_permissions for class '{self.__name__}' but class has no such method")
 
         return dispatch(self, request, *args, **kwargs)
 
     return pre_dispatch
 
 
-def before_view(view, view_permissions, is_method, view_instance, original_check_permissions):
+def before_view(handler, handler_permissions, is_method, view_instance, original_check_permissions):
     """
     Main wrapper for views
 
     Args:
+        handler_permissions: If None passed, DEFAULT_ACCESS will be used
         is_method(bool): Tells if the view is class-based
         view_instance: Only applicable for classes. Required for checking permissions in view redirections.
 
     Ensures permissions are checked before calling the view
     """
 
-    def pre_view(view, request, self):
+    def pre_view(handler, request, self):
         logger.debug('Checking permissions..')
 
         # Try to find the right permission checks for the view
-        granted = permissions.check_permissions(request, view, self, view_permissions)
+        granted = permissions.check_permissions(request, handler, self, handler_permissions)
 
         # Role matched and permission granted
         if granted:
@@ -188,12 +189,12 @@ def before_view(view, view_permissions, is_method, view_instance, original_check
         raise PermissionDenied('Permission denied for user.')
 
     def wrapped_function(request, *args, **kwargs):
-        pre_view(view, request, None)
-        return view(request, *args, **kwargs)
+        pre_view(handler, request, None)
+        return handler(request, *args, **kwargs)
 
     def wrapped_method(request, *args, **kwargs):
-        pre_view(view, request, view_instance)
-        return view(request, *args, **kwargs)
+        pre_view(handler, request, view_instance)
+        return handler(request, *args, **kwargs)
 
     if is_method:
         return wrapped_method
@@ -277,8 +278,8 @@ def patch(urlconf=None):
         # Patch non
         elif hasattr(pattern.callback, '_view_permissions'):
             pattern.callback = before_view(
-                view=pattern.callback,
-                view_permissions=pattern.callback._view_permissions,
+                handler=pattern.callback,
+                handler_permissions=pattern.callback._view_permissions,
                 is_method=False,
                 view_instance=None,
                 original_check_permissions=None,
