@@ -5,7 +5,7 @@ REST Framework Roles
 
 Role-based permissions for Django REST Framework (or vanilla Django).
 
-  - Support for class-based views both in Django and DRF.
+  - Support for class-based views both in Django 4+ and DRF.
   - Keep views and models light.
   - Easy declarative configuration (still allowing complex scenarios).
   - View redirection works out-of-the-box.

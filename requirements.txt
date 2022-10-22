@@ -1,5 +1,6 @@
 djangorestframework
-cerberus
+
+# Dev
 pytest
 pytest-django
 twine

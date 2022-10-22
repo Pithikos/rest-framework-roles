@@ -2,6 +2,7 @@
 =====
   
   - Drop support for function views
+  - Support for Django 4
 
 
 0.4.1
