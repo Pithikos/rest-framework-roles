@@ -42,7 +42,7 @@ class UserViewSet(drf.viewsets.ModelViewSet):
 
     view_permissions = {
         'retrieve': {'user': is_self, 'admin': True},
-        'update': {
+        'partial_update': {
             'user': allof(is_self, not_updating_email),
             'admin': True,
         },
