@@ -120,7 +120,6 @@ def wrapped_dispatch(dispatch):
                 before = wrapped_view(
                     handler=handler,
                     handler_permissions=handler_permissions,
-                    is_method=True,
                     view_instance=self,
                 )
                 setattr(self, verb, before)
@@ -131,7 +130,7 @@ def wrapped_dispatch(dispatch):
         for handler_name, handler_permissions in self._view_permissions.items():
             if hasattr(self, handler_name):
                 handler = getattr(self, handler_name)
-                before = wrapped_view(handler, handler_permissions, is_method=True, view_instance=self)
+                before = wrapped_view(handler, handler_permissions, view_instance=self)
                 setattr(self, handler_name, before)
             else:
                 raise Misconfigured(f"Specified view '{handler_name}' in view_permissions for class '{self.__name__}' but class has no such method")
@@ -141,7 +140,7 @@ def wrapped_dispatch(dispatch):
     return pre_dispatch
 
 
-def wrapped_view(handler, handler_permissions, is_method, view_instance):
+def wrapped_view(handler, handler_permissions, view_instance):
     def wrapped(request, *args, **kwargs):
         """
         Permissions MUST be checked at this point (and not earlier), since request.user
