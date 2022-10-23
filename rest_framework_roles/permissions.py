@@ -29,8 +29,11 @@ def check_permissions(request, view, view_instance, view_permissions=None):
     Return:
         Granted permission - True or False. None if no role matched.
     """
+    if hasattr(request, "_permissions_checked"):
+        raise Exception("Implementation bug. Permissions already checked")
+    request._permissions_checked = True  # Allows us to check if already been called
 
-    logger.debug('Check permissions..')
+    logger.debug(f'Check permissions for {request}..')
 
     # For decorated functions we check the permissions attached to the function
     if not view_permissions:
