@@ -9,7 +9,6 @@ from django.http import HttpResponse
 from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.roles import is_admin, is_user, is_anon
 from rest_framework_roles.granting import is_self, anyof, allof
-from rest_framework_roles.decorators import allowed
 from rest_framework_roles import patching
 from .fixtures import admin, user, anon
 from .utils import assert_allowed, assert_disallowed, UserSerializer
@@ -59,6 +58,6 @@ class TestUserAPI():
     def setup(self):
         patching.patch()
 
-    def test_only_admin_can_list_users(self, user, anon, admin):
+    def test_all_can_list(self, user, anon, admin):
         assert_allowed(user, get='/users/')
         assert_allowed(admin, get='/users/')

@@ -8,7 +8,6 @@ from django.http import HttpResponse
 
 from rest_framework_roles.roles import is_admin, is_user, is_anon
 from rest_framework_roles.granting import is_self, anyof, allof
-from rest_framework_roles.decorators import allowed
 from rest_framework_roles import patching
 from .fixtures import admin, user, anon
 from .utils import assert_allowed, assert_disallowed, UserSerializer
@@ -50,6 +49,10 @@ class UserViewSet(drf.viewsets.ModelViewSet):
         'create': {'anon': True},
         'list': {'admin': True},
         'me': {'user': True},
+
+        # Custom actions
+        'only_user': {'user': True},
+        'only_anon': {'anon': True},
     }
 
     def redirect_view(self, request):
@@ -63,16 +66,17 @@ class UserViewSet(drf.viewsets.ModelViewSet):
         self.kwargs['pk'] = request.user.pk
         return self.redirect_view(request)
 
-    @allowed('user')
     @drf.decorators.action(detail=False)
     def only_user(self, request):
         return HttpResponse()
 
-    @allowed('anon')
     @drf.decorators.action(detail=False)
     def only_anon(self, request):
         return HttpResponse()
 
+    @drf.decorators.action(detail=False)
+    def undecorated(self, request):
+        return HttpResponse()
 
 router = drf.routers.DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')

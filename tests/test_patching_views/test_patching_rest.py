@@ -12,18 +12,11 @@ from rest_framework.test import APIClient
 from rest_framework import status
 
 from rest_framework_roles import patching
-from rest_framework_roles.decorators import allowed
 from ..utils import UserSerializer, _func_name, is_preview_patched, is_predispatch_patched
 from rest_framework_roles.roles import is_user
 
 
 # -------------------------------- Setup app -----------------------------------
-
-
-@allowed('admin')
-@drf.decorators.api_view(['get', 'post'])
-def rest_function_view_decorated(request):
-    return HttpResponse(_func_name())
 
 
 @drf.decorators.api_view(['get', 'post'])
@@ -50,15 +43,6 @@ class RestAPIView(drf.views.APIView):  # This is the mother class of all classes
     def view_patched_by_view_permissions(self, request):
         return HttpResponse(_func_name())
 
-    @allowed('admin')
-    def view_patched_by_decorator(self, request):
-        return HttpResponse(_func_name())
-
-    @allowed('admin')
-    @drf.decorators.action(detail=False, methods=['get'])
-    def action_patched_by_decorator(self, request):
-        return HttpResponse(_func_name())
-
 
 class RestViewSet(drf.viewsets.ViewSet):
     view_permissions = {'list': {'admin': True}}
@@ -67,15 +51,17 @@ class RestViewSet(drf.viewsets.ViewSet):
 
 
 class RestAdminFallback(drf.generics.GenericAPIView):
+    view_permissions = {"get": {"user": True}}
     permission_classes = (drf.permissions.IsAdminUser,)
-    @allowed('user')
+
     def get(self, request):
         return HttpResponse(_func_name())
 
 
 class RestAllowAnyFallback(drf.generics.GenericAPIView):
+    view_permissions = {"get": {"user": True}}
     permission_classes = (drf.permissions.AllowAny,)
-    @allowed('user')
+
     def get(self, request):
         return HttpResponse(_func_name())
 
@@ -122,7 +108,6 @@ router.register(r'listed_users', RestClassMixedViewset, basename='listed_users')
 
 urlpatterns = [
     # Rest functions end up being methods to a class
-    path('rest_function_view_decorated', rest_function_view_decorated),
     path('rest_function_view_undecorated', rest_function_view_undecorated),
 
     # Normal class

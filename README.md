@@ -65,7 +65,9 @@ We now need to define when permission should be granted for a matching role.
 views.py
 ```python
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.decorators import action
 from rest_framework_roles.granting import is_self
+
 
 class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
@@ -77,7 +79,6 @@ class UserViewSet(ModelViewSet):
         'list': {'admin': True},
     }
 
-    @allowed('admin', 'user')
     @action(detail=False, methods=['get'])
     def me(self, request):
         self.kwargs['pk'] = request.user.pk
@@ -85,8 +86,6 @@ class UserViewSet(ModelViewSet):
 ```
 
 In this example only anonymous users can create a new user account. Admin can retrieve any user's acount and list users. Users can only retrieve their own information.
-
- You can use any of **@allowed**, **@disallowed** or **view_permissions** to specify permissions.
 
 
 

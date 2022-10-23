@@ -10,16 +10,10 @@ from django.http import HttpResponse
 
 # from .urls import *
 from rest_framework_roles import patching
-from rest_framework_roles.decorators import allowed
 from ..utils import _func_name, is_preview_patched, is_predispatch_patched
 
 
 # -------------------------------- Setup app -----------------------------------
-
-
-@allowed('admin')
-def django_function_view_decorated(request):
-    return HttpResponse(_func_name())
 
 
 def django_function_view_undecorated(request):
@@ -34,10 +28,6 @@ class DjangoView(django.views.generic.ListView):
         return HttpResponse(_func_name())
 
     def view_unpatched(self, request):
-        return HttpResponse(_func_name())
-
-    @allowed('admin')
-    def view_patched_by_decorator(self, request):
         return HttpResponse(_func_name())
 
 

@@ -1,6 +1,6 @@
 import pytest
 
-from rest_framework_roles.decorators import role_checker, allowed, disallowed, DEFAULT_COST
+from rest_framework_roles.decorators import role_checker, DEFAULT_COST
 from rest_framework_roles.roles import is_admin
 
 
@@ -42,24 +42,3 @@ class TestRoleCheckerDecorators:
             # assert
         assert is_owner.cost == expensive_cost
         assert is_cheapo.cost == cheap_cost
-
-
-class TestViewDecorators:
-    def test_attaches_view_permissions_to_view(self):
-        @allowed('admin')
-        def allowed_admin():
-            pass
-
-        @disallowed('admin')
-        def disallowed_admin():
-            pass
-
-        assert hasattr(allowed_admin, '_view_permissions')
-        assert type(allowed_admin._view_permissions) is list
-        assert (True, is_admin) in allowed_admin._view_permissions
-
-    def test_invalid_role_raises_exception(self):
-        with pytest.raises(Exception):
-            @allowed('garbage')
-            def myview():
-                pass

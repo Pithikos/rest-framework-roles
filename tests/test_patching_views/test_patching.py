@@ -4,9 +4,9 @@ from django.http import HttpResponse
 from django.test import RequestFactory
 
 from .test_patching_django import DjangoView
-from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view_decorated, rest_function_view_undecorated
+from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view_undecorated
 from .test_patching_rest import urlpatterns as rest_urlpatterns
-from .test_patching_django import django_function_view_decorated, django_function_view_undecorated
+from .test_patching_django import django_function_view_undecorated
 from .test_patching_django import urlpatterns as django_urlpatterns
 from rest_framework_roles.patching import is_callback_method, get_view_class, wrapped_view
 
@@ -34,7 +34,6 @@ def test_is_callback_method():
 def test_get_view_class():
     assert get_view_class(DjangoView.as_view()) == DjangoView
     assert get_view_class(RestAPIView.as_view()) == RestAPIView
-    assert get_view_class(rest_function_view_decorated).__qualname__ == 'WrappedAPIView'
     assert get_view_class(rest_function_view_undecorated).__qualname__ == 'WrappedAPIView'
 
     assert get_view_class(RestViewSet.as_view({'get': 'list'})) == RestViewSet
