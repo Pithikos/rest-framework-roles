@@ -44,7 +44,7 @@ def test_get_view_class():
 def test_check_permissions_is_called_by_wrapped_view():
     view = lambda r: HttpResponse(status=200)
     request = RequestFactory().get('')
-    patched_view = wrapped_view(view, False, None, None, None)
+    patched_view = wrapped_view(view, False, None, None)
     with mock.patch('rest_framework_roles.permissions.check_permissions') as mocked_check_permissions:
         response = patched_view(request)
         assert response.status_code == 200

@@ -98,14 +98,6 @@ def wrapped_dispatch(dispatch):
         Note that request.user not populated at this point
         """
 
-        # Dummify check_permissions for REST. This is needed if we patch the handler
-        # or another viewset method.
-        if hasattr(self, 'check_permissions'):
-            original_check_permissions = self.check_permissions
-            self.check_permissions = dummy_check_permissions
-        else:
-            original_check_permissions = None
-
         # Patch handler (as per Django and REST shared logic)
         verb = request.method.lower()
         if hasattr(self, verb):
@@ -130,7 +122,6 @@ def wrapped_dispatch(dispatch):
                     handler_permissions=handler_permissions,
                     is_method=True,
                     view_instance=self,
-                    original_check_permissions=original_check_permissions
                 )
                 setattr(self, verb, before)
 
@@ -140,7 +131,7 @@ def wrapped_dispatch(dispatch):
         for handler_name, handler_permissions in self._view_permissions.items():
             if hasattr(self, handler_name):
                 handler = getattr(self, handler_name)
-                before = wrapped_view(handler, handler_permissions, is_method=True, view_instance=self, original_check_permissions=original_check_permissions)
+                before = wrapped_view(handler, handler_permissions, is_method=True, view_instance=self)
                 setattr(self, handler_name, before)
             else:
                 raise Misconfigured(f"Specified view '{handler_name}' in view_permissions for class '{self.__name__}' but class has no such method")
@@ -150,7 +141,7 @@ def wrapped_dispatch(dispatch):
     return pre_dispatch
 
 
-def wrapped_view(handler, handler_permissions, is_method, view_instance, original_check_permissions):
+def wrapped_view(handler, handler_permissions, is_method, view_instance):
     def wrapped(request, *args, **kwargs):
         """
         Permissions MUST be checked at this point (and not earlier), since request.user
@@ -162,10 +153,6 @@ def wrapped_view(handler, handler_permissions, is_method, view_instance, origina
         if not granted:
             raise PermissionDenied('Permission denied for user.')
 
-        # Use DRF's original check_permissions
-        if original_check_permissions:
-            original_check_permissions(request)
-        
         return handler(request, *args, **kwargs)
     return wrapped
 
@@ -185,14 +172,6 @@ def is_callback_method(callback):
     except AttributeError:
         pass
     return False
-
-
-def dummy_check_permissions(self, *args):
-    """
-    Dummy that replaces the REST class' check_permissions in order to not break
-    the flow of REST Framework
-    """
-    return None
 
 
 def get_view_class(callback):
