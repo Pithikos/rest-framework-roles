@@ -151,43 +151,23 @@ def wrapped_dispatch(dispatch):
 
 
 def before_view(handler, handler_permissions, is_method, view_instance, original_check_permissions):
-    """
-    Main wrapper for views
-
-    Args:
-        handler_permissions: If None passed, DEFAULT_ACCESS will be used
-        is_method(bool): Tells if the view is class-based
-        view_instance: Only applicable for classes. Required for checking permissions in view redirections.
-
-    Ensures permissions are checked before calling the view
-    """
-
-    def pre_view(handler, request, self):
+    def wrapped(request, *args, **kwargs):
         """
-        Permissions MUST be checked at this point and not earlier, since request.user
+        Permissions MUST be checked at this point (and not earlier), since request.user
         is populated properly at this point
         """
-        logger.debug('Checking permissions..')
 
-        # Try to find the right permission checks for the view
-        granted = permissions.check_permissions(request, handler, self, handler_permissions)
+        # Check permissions
+        granted = permissions.check_permissions(request, handler, view_instance, handler_permissions)
+        if not granted:
+            raise PermissionDenied('Permission denied for user.')
 
-        # Role matched and permission granted
-        if granted:
-            return
-
-        # No matching role
-        if granted == None and original_check_permissions:
+        # Use DRF's original check_permissions
+        if original_check_permissions:
             original_check_permissions(request)
-
-        # Fallback for all other cases
-        raise PermissionDenied('Permission denied for user.')
-
-    def wrapped_method(request, *args, **kwargs):
-        pre_view(handler, request, view_instance)
+        
         return handler(request, *args, **kwargs)
-
-    return wrapped_method
+    return wrapped
 
 
 # ------------------------------------------------------------------------------
