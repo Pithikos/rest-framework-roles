@@ -45,7 +45,7 @@ def assert_disallowed(user, get=None, post=None, patch=None, data=None, expected
 
 
 def is_preview_patched(fn):
-    return 'before_view' in str(fn)
+    return 'wrapped_view' in str(fn)
 
 
 def is_predispatch_patched(fn):
