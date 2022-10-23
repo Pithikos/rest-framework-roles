@@ -213,19 +213,14 @@ def patch(urlconf=None):
     """
     Entrypoint for all patching (after configurations have loaded)
 
-    We construct a view_table that is used for the actual patching.
-
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
-
 
 
     patch ---- REST method ----.
          |                      --- patch dispatch ----> patch view
           '--- Django method --'
     """
-
-    view_table = []  # list of (<pattern>, <viewname>, <class>, <view>, <permissions>, <original check_permissions>)
 
     patterns = get_urlpatterns(urlconf)
 
