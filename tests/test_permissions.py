@@ -85,20 +85,45 @@ class UserViewSet(drf.viewsets.ModelViewSet):
         return HttpResponse()
 
 
+class ViewRedirection(drf.viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+
+    view_permissions = {
+        'list': {'admin': True},  # restrictive inner as expected
+
+        'all_allowed': {'anon': True, 'user': True, 'admin': True},
+        'admin_allowed': {'admin': True},
+        'anon_allowed': {'anon': True},
+    }
+
+    @drf.decorators.action(methods=['get'], detail=False)
+    def all_allowed(self, request):
+        self.kwargs['pk'] = request.user.pk
+        return self.list(request)
+
+    @drf.decorators.action(methods=['get'], detail=False)
+    def admin_allowed(self, request):
+        self.kwargs['pk'] = request.user.pk
+        return self.list(request)
+
+    @drf.decorators.action(methods=['get'], detail=False)
+    def anon_allowed(self, request):
+        self.kwargs['pk'] = request.user.pk
+        return self.list(request)
+
+
 class WithoutViewPermissions(drf.viewsets.ModelViewSet):
     """Used to ensure we always use least privileges"""
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
 
-user_router = drf.routers.DefaultRouter()
-user_router.register(r'users', UserViewSet, basename='user')
-unpatched_router = drf.routers.DefaultRouter()
-unpatched_router.register(r'noviewpermissions', WithoutViewPermissions, basename='noviewpermissions')
-urlpatterns = [
-    path('', include(user_router.urls)),
-    path('', include(unpatched_router.urls)),
-]
+router = drf.routers.DefaultRouter()
+router.register(r'users', UserViewSet, basename='user')
+router.register(r'noviewpermissions', WithoutViewPermissions, basename='noviewpermissions')
+router.register(r'redirectedviews', ViewRedirection, basename='redirectedviews')
+urlpatterns = [path('', include(router.urls)),]
 
 
 # ------------------------------------------------------------------------------
@@ -214,3 +239,33 @@ class TestAccess():
 
     def test_405(self):
         pass
+
+
+@pytest.mark.urls(__name__)
+class TestViewRedirection():
+    def setup(self):
+        patching.patch()
+    
+    def test_inner_privilege_restricts_access(self, user, anon, admin):
+        """
+        Ensure if 2 views used, the leasy privilege is in effect
+        """
+
+        # Default behaviour; listing
+        assert_allowed(admin, get="/redirectedviews/")
+        assert_disallowed(anon, get="/redirectedviews/")
+        assert_disallowed(user, get="/redirectedviews/")
+
+        # Permissive action redirecting to 'list' should respect least privileges
+        assert_allowed(admin, get="/redirectedviews/all_allowed/")
+        assert_disallowed(anon, get="/redirectedviews/all_allowed/")
+        assert_disallowed(user, get="/redirectedviews/all_allowed/")
+
+        # Restrictive action redirecting to 'list' should respect least privileges
+        assert_allowed(admin, get="/redirectedviews/admin_allowed/")
+        assert_disallowed(anon, get="/redirectedviews/admin_allowed/")
+        assert_disallowed(user, get="/redirectedviews/admin_allowed/")
+
+        assert_disallowed(admin, get="/redirectedviews/anon_allowed/")
+        assert_disallowed(anon, get="/redirectedviews/anon_allowed/")
+        assert_disallowed(user, get="/redirectedviews/anon_allowed/")
