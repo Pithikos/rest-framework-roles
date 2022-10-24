@@ -30,7 +30,7 @@ ROLES = {
     'user': is_user,
     'anon': is_anon,
 }
-settings.REST_FRAMEWORK_ROLES['roles'] = f"{__name__}.ROLES"
+settings.REST_FRAMEWORK_ROLES['ROLES'] = f"{__name__}.ROLES"
 
 
 class UserViewSet(drf.viewsets.ModelViewSet):

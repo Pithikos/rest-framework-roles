@@ -8,8 +8,8 @@ from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles import decorators
 
 
-VALID_SETTINGS = {"roles"}
-REQUIRED_SETTINGS = {"roles"}
+VALID_SETTINGS = {"ROLES"}
+REQUIRED_SETTINGS = {"ROLES"}
 
 
 def validate_config(config):
@@ -29,7 +29,7 @@ def load_roles(config=None):
         from django.conf import settings
         config = settings.REST_FRAMEWORK_ROLES
     validate_config(config)
-    roles = config['roles']
+    roles = config['ROLES']
     if isinstance(roles, str):
         roles = import_string(roles)
     return roles
