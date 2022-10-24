@@ -60,7 +60,7 @@ def wrapped_dispatch(dispatch):
                 before = wrapped_view(handler, handler_permissions, view_instance=self)
                 setattr(self, handler_name, before)
             else:
-                raise Misconfigured(f"Specified view '{handler_name}' in view_permissions for class '{self.__name__}' but class has no such method")
+                raise Misconfigured(f"Could not find view '{handler_name}' specified in '{self.__class__.__name__}.view_permissions'")
 
         return dispatch(self, request, *args, **kwargs)
 
