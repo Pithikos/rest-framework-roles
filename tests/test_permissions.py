@@ -187,6 +187,7 @@ TEST_CASES = [
     ("/noviewpermissions/", "user", 403),
     ("/noviewpermissions/", "anon", 403),
     ("/noviewpermissions/", "admin", 403),
+    ("/zzzzzzzzzzzzzzzzzzzzzzzzzz/", "admin", 404),
 ]
 
 @pytest.mark.urls(__name__)
