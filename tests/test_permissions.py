@@ -86,6 +86,9 @@ class UserViewSet(drf.viewsets.ModelViewSet):
 
 
 class ViewRedirection(drf.viewsets.ModelViewSet):
+    """
+    Cover cases where you have an outer first view that redirects to an inner view
+    """
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
@@ -99,17 +102,14 @@ class ViewRedirection(drf.viewsets.ModelViewSet):
 
     @drf.decorators.action(methods=['get'], detail=False)
     def all_allowed(self, request):
-        self.kwargs['pk'] = request.user.pk
         return self.list(request)
 
     @drf.decorators.action(methods=['get'], detail=False)
     def admin_allowed(self, request):
-        self.kwargs['pk'] = request.user.pk
         return self.list(request)
 
     @drf.decorators.action(methods=['get'], detail=False)
     def anon_allowed(self, request):
-        self.kwargs['pk'] = request.user.pk
         return self.list(request)
 
 

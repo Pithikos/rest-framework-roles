@@ -1,8 +1,21 @@
 1.0.0
 =====
-  
-  - Drop support for function views
-  - Support for Django 4
+
+This version is a major refactoring to only support latest DRF and ease future maintenace, plus ensuring least privilege by default.
+
+Dropped features
+  - Officially only support DRF (vanilla Django might still work fine but not thoroughly tested)
+  - Totally drop support for function-based views
+  - Totally drop support for 'allowed' and 'disallowed' decorators
+
+New features
+  - Least privileges by default
+
+Changes
+  - Rename setting 'roles' to 'ROLES'
+  - Views found in view_permissions are patched explicitly to go via our framework
+  - Add RolePermission, and make it patched by default on classes without permission_classes
+  - Several fixes and more tests to ensure we don't check permissions way too many times for cyclic views (redirections)
 
 
 0.4.1
@@ -10,4 +23,4 @@
 
   - Support for Django 3
   - Support for Django REST Framework
-  - Support methods and functions
+  - Support both class-based and function-based views
