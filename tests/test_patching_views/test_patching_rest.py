@@ -66,7 +66,7 @@ class RestAllowAnyFallback(drf.generics.GenericAPIView):
         return HttpResponse(_func_name())
 
 
-class RestClassMixed(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
+class RestClassMixed1(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
     view_permissions = {'list': {'admin': True}}
@@ -119,7 +119,7 @@ urlpatterns = [
     path('rest_class_viewset', RestViewSet.as_view({'get': 'list'})),
 
     # Etc..
-    path('rest_class_mixed', RestClassMixed.as_view()),
+    path('rest_class_mixed1', RestClassMixed1.as_view()),
     path('rest_class_mixed2', RestClassMixed2.as_view()),
     path('', include(router.urls)),
 ]
@@ -142,7 +142,7 @@ def test_class_views_specified_methods_patched(rest_resolver, client):
     #
     # We need to ensure that only the specified views get patched and nothing more
     # for classes.
-    match = rest_resolver.resolve('/rest_class_mixed')
+    match = rest_resolver.resolve('/rest_class_mixed1')
     assert not is_preview_patched(match.func.cls.get)
 
     def _test_instance(self, request):
@@ -153,42 +153,34 @@ def test_class_views_specified_methods_patched(rest_resolver, client):
 
     # We patch 'initial' since that is called inside the original dispatch
     # so gives us self after the pre-dispatch hook runs
-    with patch.object(RestClassMixed, 'initial', new=_test_instance):
-        resp = client.get('/rest_class_mixed')
+    with patch.object(RestClassMixed1, 'initial', new=_test_instance):
+        resp = client.get('/rest_class_mixed1')
         assert resp.status_code != 404
 
 
 @pytest.mark.urls(__name__)
-def test_class_instance_patched(db, rest_resolver, client):
-    # We should not patch the class methods directly but the instances. This is since a class can
-    # inherit for mixins and we don't want to end up having two classes sharing the same mixin
-    # to behave the same.
-    assert rest_resolver.resolve('/rest_class_mixed') != rest_resolver.resolve('/rest_class_mixed2')
+def test_class_method_not_patched(db, rest_resolver, client):
+    """
+    One or more class views can share the same mixin, hence we don't want to patch
+    the class method but instead the methods in the instances.
+    """
+    assert rest_resolver.resolve('/rest_class_mixed1') != rest_resolver.resolve('/rest_class_mixed2')
 
     admin = User.objects.create(username='admin', is_superuser=True)
     client.force_authenticate(admin)
-    resp = client.get('/rest_class_mixed')
+    resp = client.get('/rest_class_mixed1')
+    assert resp.status_code == 200
+    resp = client.get('/rest_class_mixed2')
+    assert resp.status_code == 403
+    resp = client.get('/rest_class_mixed1')
     assert resp.status_code == 200
     resp = client.get('/rest_class_mixed2')
     assert resp.status_code == 403
 
-    # ------------------------------------------------------------------
-
-    def _test_instance(self, request):
-        # 'get' and 'list' are the same at this point since as_view(),
-        # populates the 'get' as a shortcut for 'list'.
-        assert self.get
-        assert self.list
-        assert is_preview_patched(self.get)  # although not explicitly set perms
-        assert is_preview_patched(self.list)
-        return HttpResponse()
-
-    # We patch 'initial' since that is called inside the original dispatch
-    # so gives us self after the pre-dispatch hook runs
-    with patch.object(RestClassModel, 'initial', new=_test_instance):
-        client.get('/users/')
-
-    assert not is_preview_patched(RestClassModel.list)
+    # Ensure class method of viewsets or mixin not wrapped (aka patched)
+    assert RestClassMixed1.get.__qualname__ == "RestClassMixed1.get"
+    assert RestClassMixed2.get.__qualname__ == "RestClassMixed2.get"
+    assert drf.mixins.ListModelMixin.list.__qualname__ == "ListModelMixin.list"
 
 
 @pytest.mark.urls(__name__)

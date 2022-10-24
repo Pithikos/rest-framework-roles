@@ -47,40 +47,13 @@ def is_rest_function(self):
 
 
 def wrapped_dispatch(dispatch):
-    def pre_dispatch(self, request, *args, **kwargs):
+    def wrapped(self, request, *args, **kwargs):
         """
-        Note that request.user not populated at this point
+        Note that request.user not populated at this point so permission checking
+        is not possible yet.
         """
 
-        # Patch handler (as per Django and REST shared logic)
-        verb = request.method.lower()
-        if hasattr(self, verb):
-            handler = getattr(self, verb)
-            handler_permissions = None
-
-            # Get handler permissions
-            # NOTE: handler can e.g. be self.post but bound to 'create'
-            if hasattr(handler, '_view_permissions'):
-                handler_permissions = handler._view_permissions
-            elif hasattr(self, '_view_permissions'):
-                # REST CLASS
-                if handler.__name__ in self._view_permissions:
-                    handler_permissions = self._view_permissions[handler.__name__]
-                elif verb in self._view_permissions:
-                    handler_permissions = self._view_permissions[verb]
-
-            # Patch view regardless if view_permissions found
-            if handler_permissions:
-                before = wrapped_view(
-                    handler=handler,
-                    handler_permissions=handler_permissions,
-                    view_instance=self,
-                )
-                setattr(self, verb, before)
-
-        # ---------------------------------------------------------------
-
-        # In order to allow redirections we need to patch all methods of instance as per _view_permissions
+        # Patch views for DRF class instances
         for handler_name, handler_permissions in self._view_permissions.items():
             if hasattr(self, handler_name):
                 handler = getattr(self, handler_name)
@@ -91,7 +64,7 @@ def wrapped_dispatch(dispatch):
 
         return dispatch(self, request, *args, **kwargs)
 
-    return pre_dispatch
+    return wrapped
 
 
 def wrapped_view(handler, handler_permissions, view_instance):
