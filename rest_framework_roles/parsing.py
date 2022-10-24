@@ -1,41 +1,3 @@
-"""
-PREPARSED
-
-view_settings can be part of the body in a class or as a global setting. The
-only difference is that in the latter, you need to specify full module paths.
-
-
-settings style:
-{
-    'myapp.views.MyModel.myview': {
-        'admin': True,
-        'user': False,
-    }
-}
-
-class-based view_settings:
-{
-    'myview': {
-        'admin': True,
-        'user': False,
-    }
-}
-
-POSTPARSED
-
-In all cases we get a lookup table where the permissions have been converted
-to a permission list. For this the conversion makes use of the ROLES setting.
-
-E.g.
-
-{
-    'myview': [
-        (True, is_admin),
-        (False, is_user),
-    ]
-}
-"""
-
 import importlib
 
 from django.conf import settings
@@ -46,13 +8,17 @@ from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles import decorators
 
 
-def validate_config(config):
-    if 'roles' not in config:
-        raise django_exceptions.ImproperlyConfigured("Missing 'roles'")
+VALID_SETTINGS = {"roles"}
+REQUIRED_SETTINGS = {"roles"}
 
-    # TODO: Uncomment once we support view_permissions to be defined in settings
-    # if 'view_permissions' not in config:
-    #     raise django_exceptions.ImproperlyConfigured("Missing 'view_permissions'")
+
+def validate_config(config):
+    for setting in config.keys():
+        if setting not in VALID_SETTINGS:
+            raise django_exceptions.ImproperlyConfigured(f"Unknown setting '{setting}'")
+    for required_setting in REQUIRED_SETTINGS:
+        if required_setting not in config:
+            raise django_exceptions.ImproperlyConfigured(f"Missing required setting '{required_setting}'")
 
 
 def load_roles(config=None):

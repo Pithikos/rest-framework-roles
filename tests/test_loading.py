@@ -24,11 +24,10 @@ VALID_VIEW_PERMISSIONS_PATH = f'{__name__}.VALID_VIEW_PERMISSIONS'
 
 
 def test_load_roles_by_dotted_path():
-    assert load_roles({'roles': VALID_ROLES_PATH, 'view_permissions': None})
+    assert load_roles({'roles': VALID_ROLES_PATH})
 
 
 def test_validate_config():
     validate_config({'roles': None})
-    # with pytest.raises(Exception):
-    #     validate_config({'view_permissions': None})
-    validate_config({'view_permissions': None, 'roles': None})
+    with pytest.raises(Exception):
+        validate_config({'garbage': 'whatever'})  # unknown setting
