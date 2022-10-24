@@ -145,13 +145,17 @@ def patch(urlconf=None):
     if not patterns:
         return
 
-
+    # Collect classes since multiple patterns might use the same view class
+    collected_classes = set()
     for pattern in patterns:
+        cls = get_view_class(pattern.callback)
+        logger.debug(f'Collecting classes: {pattern} -> {cls}')
+        collected_classes.add(cls)
 
-        logger.debug(f'Traversing pattern: {pattern}')
+    # Patch classes
+    for cls in collected_classes:
 
         # Wrap dispatcher for cases where patching needs to be done at runtime.
-        cls = get_view_class(pattern.callback)
         try:
             cls.dispatch = wrapped_dispatch(cls.dispatch)
         except AttributeError as e:
