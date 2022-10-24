@@ -11,6 +11,8 @@ from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.granting import GrantChecker, bool_granted, TYPE_FUNCTION
 from rest_framework_roles import exceptions
 
+MAX_VIEW_REDIRECTION_DEPTH = 3  # Disallow too much depth since it can become expensive
+
 
 class RolePermission(BasePermission):
     """
@@ -66,9 +68,17 @@ def check_permissions(request, view, view_instance, view_permissions=None):
         Granted permission - True or False. None if no role matched.
     """
     assert isinstance(view_permissions, list) or view_permissions == None
+
+    # Allow checking permissions again in case of redirected views
     if hasattr(request, "_permissions_checked"):
-        raise Exception("Implementation bug. Permissions already checked")
-    request._permissions_checked = True  # Allows us to check if already been called
+        if view in request._permissions_checked:
+            raise Exception(f"Implementation bug. Permissions already checked by {view}")
+        request._permissions_checked.add(view)
+    else:
+        request._permissions_checked = {view}  # Allows us to check if already been called
+
+    if len(request._permissions_checked) > MAX_VIEW_REDIRECTION_DEPTH:
+        raise Exception(f"Permissions checked too many times for same request: {request}")
 
     logger.debug(f'Check permissions for {request}..')
 
