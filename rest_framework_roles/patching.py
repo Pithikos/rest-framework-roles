@@ -139,6 +139,7 @@ def patch(urlconf=None):
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
     """
+    DISPATCH_WRAP_FLAG = "_rfr_wrapped"
 
     patterns = get_urlpatterns(urlconf)
 
@@ -156,10 +157,13 @@ def patch(urlconf=None):
     for cls in collected_classes:
 
         # Wrap dispatcher for cases where patching needs to be done at runtime.
+        if hasattr(cls.dispatch, DISPATCH_WRAP_FLAG):
+            raise Exception(f"{cls.__name__}.dispatch already patched")
         try:
             cls.dispatch = wrapped_dispatch(cls.dispatch)
         except AttributeError as e:
             raise Exception(f"Can't patch view for {pattern}. Are you sure it's a class-based view?")
+        setattr(cls.dispatch, DISPATCH_WRAP_FLAG, True)
 
         # Enforce RolePermission for every class
         if hasattr(cls, "permission_classes"):
