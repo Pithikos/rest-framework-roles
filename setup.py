@@ -54,6 +54,14 @@ setup(
     keywords=[
         'permissions',
         'roles',
+        'users',
+        'django',
+        'rest',
+        'drf',
+        'acl',
+        'security',
+        'rest framework',
+        'access control'
     ],
     classifiers=[
         'Framework :: Django',
