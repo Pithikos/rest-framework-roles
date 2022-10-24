@@ -38,6 +38,11 @@ class VerifyVersionCommand(install):
             sys.exit(f"Git tag: {tag} does not match the version of this app: {VERSION}")
 
 
+INSTALL_REQUIRES = [
+    "djangorestframework",
+]
+
+
 setup(
     name='rest_framework_roles',
     version=VERSION,
@@ -49,7 +54,7 @@ setup(
     license='LICENSE',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    install_requires=[],
+    install_requires=INSTALL_REQUIRES,
     python_requires='>=3',
     keywords=[
         'permissions',
