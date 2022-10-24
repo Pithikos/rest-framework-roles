@@ -1,55 +1,9 @@
 """
-Patching occurs at runtime. However due to the nature of the flow of class-based views, this
-can be more involved.
-
-Below you can see the overall design on the patching process.
-
-(Django patched)           (REST)                 (REST patched)
-      |                       |                          |
-pre_dispatch --.              |                    pre_dispatch --.
-               |              |                                   |
-          patch handler       |                              patch handler
-               |              |                                   |
-   (optionally patch all      |                           (optionally patch all
-    instance methods)         |                            instance methods)
-               |              |                                   |
-            dispatch       dispatch                            dispatch
-               |              |                                   |
-      .--------'              |                          .--------'
-      |                       |                          |
-      |                       |                          |
-      |              REST check_permissions     REST check_permissions (mocked to do nothing)
-      |                       |                          |
-  pre_view ---.               |                      pre_view ----.
-               |              |                                   |
-        check_permissions     |                            check_permissions
-               |              |                                   |
-               |              |                           REST check_permissions (original)
-               |              |                                   |
-      .--------'              |                          .--------'
-      |                       |                          |
-     view                    view                       view
-
-
-pre_dispatch
-    - nullify self.check_permissions (and push to pre_view)
-    - patch handler with pre_view
-    - patch defined views in view_permissions with pre_view
-
-pre_view
-    - check_permissions
-    - original_check_permissions
-
-* Hooks pre_dispatch and pre_view are added in normal flow of Django and Django REST.
-* pre_dispatch patches at runtime the handler and optionally all class instance methods. This allows redirections
-* pre_view ensures that permissions are checked just before calling the actual view.
-* In case of REST Framework the original REST check_permissions need to be pushed down after our
-  own check_permissions.
-* The main advantage of this way of patching is that the permissions remain view-bound.
+Patching will use a mix of RolePermission and guarding views per-se (in cases where
+RolePermission is not called by DRF, e.g. cyclic views or overriding Django's 
+internals).
 """
-
 import sys
-import inspect
 import importlib
 import logging
 
@@ -147,10 +101,11 @@ def wrapped_view(handler, handler_permissions, view_instance):
         is populated properly at this point
         """
 
-        # Check permissions
-        granted = permissions.check_permissions(request, handler, view_instance, handler_permissions)
-        if not granted:
-            raise PermissionDenied('Permission denied for user.')
+        # Check permissions when RolePermission could not
+        if not hasattr(request, "_permissions_checked"):
+            granted = permissions.check_permissions(request, handler, view_instance, handler_permissions)
+            if not granted:
+                raise PermissionDenied('Permission denied for user.')
 
         return handler(request, *args, **kwargs)
     return wrapped
@@ -189,15 +144,10 @@ def get_view_class(callback):
 
 def patch(urlconf=None):
     """
-    Entrypoint for all patching (after configurations have loaded)
+    The patching will ensure RolePermission is used in permission_classes (unless already set)
 
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
-
-
-    patch ---- REST method ----.
-         |                      --- patch dispatch ----> patch view
-          '--- Django method --'
     """
 
     patterns = get_urlpatterns(urlconf)
@@ -210,12 +160,22 @@ def patch(urlconf=None):
 
         logger.debug(f'Traversing pattern: {pattern}')
 
-        # Add pre_dispatch hooks for REST methods since patching needs to be done at runtime.
+        # Wrap dispatcher for cases where patching needs to be done at runtime.
         cls = get_view_class(pattern.callback)
         try:
             cls.dispatch = wrapped_dispatch(cls.dispatch)
         except AttributeError as e:
             raise Exception(f"Can't patch view for {pattern}. Are you sure it's a class-based view?")
+
+        # Enforce RolePermission for every class
+        if hasattr(cls, "permission_classes"):
+            if permissions.RolePermission not in cls.permission_classes:
+                if isinstance(cls.permission_classes, tuple):
+                    cls.permission_classes = (permissions.RolePermission,) + cls.permission_classes
+                else:
+                    cls.permission_classes.insert(0, permissions.RolePermission)
+        else:
+            cls.permission_classes = [permissions.RolePermission]
         
         # Generate permissions for direct lookup
         if hasattr(cls, 'view_permissions'):

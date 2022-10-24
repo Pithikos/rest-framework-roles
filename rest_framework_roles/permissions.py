@@ -3,11 +3,44 @@ Permissions are checked mainly by checking if a _view_permissions exist for give
 """
 
 import logging
+
 from django.core.exceptions import PermissionDenied
+from rest_framework.permissions import BasePermission
 
 from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.granting import GrantChecker, bool_granted, TYPE_FUNCTION
 from rest_framework_roles import exceptions
+
+
+class RolePermission(BasePermission):
+    """
+    Our DRF permission
+    """
+    def has_permission(self, request, view):
+
+        # In some cases 'view' will not have action. In those cases
+        # we rely on the wrapped_view to do the permission checking
+        if hasattr(view, "action"):
+
+            # To allow 405 Method Not Allowed
+            if not view.action:
+                return True
+            
+            # Deny access if view not explicitly guarded
+            try:
+                _permissions = view._view_permissions[view.action]
+            except KeyError:
+                return False
+        
+            # Check if
+            handler = getattr(view, view.action)
+            granted = check_permissions(request, handler, view, _permissions)
+
+            return granted
+
+        # If 'action' is missing then we let the checking to happen later on
+        # in the patched view
+        return True
 
 
 logger = logging.getLogger(__name__)
@@ -26,9 +59,13 @@ def check_permissions(request, view, view_instance, view_permissions=None):
     """
     Hook called for all 'guarded' views
 
+    Args:
+        view_permissions(list): List of permissions for the specific request handler
+
     Return:
         Granted permission - True or False. None if no role matched.
     """
+    assert isinstance(view_permissions, list) or view_permissions == None
     if hasattr(request, "_permissions_checked"):
         raise Exception("Implementation bug. Permissions already checked")
     request._permissions_checked = True  # Allows us to check if already been called
