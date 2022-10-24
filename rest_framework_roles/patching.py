@@ -66,11 +66,13 @@ def retrieve_handler(self, request):
 def wrapped_dispatch(dispatch):
     def wrapped(self, request, *args, **kwargs):
         """
-        Note that request.user not populated at this point so permission checking
-        is not possible yet.
+        The class' dispatch is wrapped solely to patch at runtime the instance view
         """
 
-        # Patch views for DRF class instances
+        # NOTE: We patch all methods regardless if they are going to fire for this request. This
+        #       ensures that nesting/redirecting views on specific logic still offers the same
+        #       protection. The performance hit is neglitible and if we run into 1000s of view_permissions
+        #       entries, maybe it's time to split the view class.
         for handler_name, handler_permissions in self._view_permissions.items():
             if hasattr(self, handler_name):
                 handler = getattr(self, handler_name)
