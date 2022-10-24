@@ -46,6 +46,23 @@ def is_rest_function(self):
     return self.__class__.__qualname__ == 'WrappedAPIView'
 
 
+def retrieve_handler(self, request):
+    """
+    Get handler as per DRF
+
+    self is the view class instance
+    """
+
+    # REF: https://github.com/encode/django-rest-framework/blob/master/rest_framework/views.py
+    if request.method.lower() in self.http_method_names:
+        handler = getattr(self, request.method.lower(),
+                            self.http_method_not_allowed)
+    else:
+        handler = self.http_method_not_allowed
+
+    return handler
+
+
 def wrapped_dispatch(dispatch):
     def wrapped(self, request, *args, **kwargs):
         """
