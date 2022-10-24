@@ -87,15 +87,13 @@ def wrapped_dispatch(dispatch):
 def wrapped_view(handler, handler_permissions, view_instance):
     def wrapped(request, *args, **kwargs):
         """
-        Permissions MUST be checked at this point (and not earlier), since request.user
-        is populated properly at this point
+        A wrapped view is the view that was explicitly mentioned in view_permissions,
+        hence it shall ALWAYS check for permissions.
         """
 
-        # Check permissions when RolePermission could not
-        if not hasattr(request, "_permissions_checked"):
-            granted = permissions.check_permissions(request, handler, view_instance, handler_permissions)
-            if not granted:
-                raise PermissionDenied('Permission denied for user.')
+        granted = permissions.check_permissions(request, handler, view_instance, handler_permissions)
+        if not granted:
+            raise PermissionDenied('Permission denied for user.')
 
         return handler(request, *args, **kwargs)
     return wrapped
