@@ -10,7 +10,7 @@ Role-based permissions for Django REST Framework.
   - Protects you from accidentally exposing an endpoint on **view redirections**.
   - Generic & flexible. You decide the where and how of your access logic and storage.
 
-There's a [ton of similar frameworks](https://www.django-rest-framework.org/api-guide/permissions/#third-party-packages) out there, but unfortunately it seems many are suited for people with an IQ of 141 or a PhD to comprehend. So here's one that hopefully will be easy as a cake to use while not sacrificing security.
+There's a [ton of similar frameworks](https://www.django-rest-framework.org/api-guide/permissions/#third-party-packages) out there requiring you an IQ of 141 or a PhD to comprehend. Hopefully this will keep you productive and safe.
 
 
 Installation
@@ -35,8 +35,8 @@ REST_FRAMEWORK_ROLES = {
 ```
 
 
-Basic usage
-===========
+Configuration
+=============
 
 
 First you need to define some roles like below
@@ -101,16 +101,14 @@ Advanced usage
 
 Bypassing the framework
 -----------------------
-If you want to bypass the framework in a specific view class just explicitly set the `permission_classes`
+If you want to bypass the framework in a specific view class just explicitly set the `permission_classes` since we add our own `RolePermission` normally.
 
 ```python
 class MyViewSet():
     permission_classes = [AllowAny]
 ```
 
-The framework normally sets `RolePermission` as first permission class, but if *permission_classes* is already there, the injection won't happen.
-
-You can still patch specific views
+Even if you bypass the framework that way, you can still protect individual views
 
 ```python
 class MyViewSet():
