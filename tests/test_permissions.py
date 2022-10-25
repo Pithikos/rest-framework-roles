@@ -85,19 +85,11 @@ class UserViewSet(drf.viewsets.ModelViewSet):
         return HttpResponse()
 
 
-class ViewRedirection(drf.viewsets.ModelViewSet):
-    """
-    Cover cases where you have an outer first view that redirects to an inner view
-    """
-    serializer_class = UserSerializer
-    queryset = User.objects.all()
-
+class ListRedirectionsMixin():
     view_permissions = {
-        'list': {'admin': True},  # restrictive inner as expected
-
         'all_allowed': {'anon': True, 'user': True, 'admin': True},
-        'admin_allowed': {'admin': True},
-        'anon_allowed': {'anon': True},
+        'only_admin_allowed': {'admin': True},
+        'only_anon_allowed': {'anon': True},
     }
 
     @drf.decorators.action(methods=['get'], detail=False)
@@ -105,12 +97,34 @@ class ViewRedirection(drf.viewsets.ModelViewSet):
         return self.list(request)
 
     @drf.decorators.action(methods=['get'], detail=False)
-    def admin_allowed(self, request):
+    def only_admin_allowed(self, request):
         return self.list(request)
 
     @drf.decorators.action(methods=['get'], detail=False)
-    def anon_allowed(self, request):
+    def only_anon_allowed(self, request):
         return self.list(request)
+
+
+class RestrictedListViewSet(drf.viewsets.ModelViewSet, ListRedirectionsMixin):
+    """Redirections trying to punch a hole"""
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+
+    view_permissions = {
+        'list': {'admin': True},
+        **ListRedirectionsMixin.view_permissions,
+    }
+
+
+class PermissiveListViewSet(drf.viewsets.ModelViewSet, ListRedirectionsMixin):
+    """Redirections trying to punch a hole"""
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+
+    view_permissions = {
+        'list': {'anon': True, 'user': True, 'admin': True},
+        **ListRedirectionsMixin.view_permissions,
+    }
 
 
 class WithoutViewPermissions(drf.viewsets.ModelViewSet):
@@ -122,7 +136,8 @@ class WithoutViewPermissions(drf.viewsets.ModelViewSet):
 router = drf.routers.DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'noviewpermissions', WithoutViewPermissions, basename='noviewpermissions')
-router.register(r'redirectedviews', ViewRedirection, basename='redirectedviews')
+router.register(r'only_admin_list', RestrictedListViewSet, basename='only_admin_list')
+router.register(r'anyone_list', PermissiveListViewSet, basename='anyone_list')
 urlpatterns = [path('', include(router.urls)),]
 
 
@@ -243,29 +258,49 @@ class TestAccess():
 
 @pytest.mark.urls(__name__)
 class TestViewRedirection():
+    """
+    Ensure a redirection does not introduce a security hole
+    """
     def setup(self):
         patching.patch()
     
-    def test_inner_privilege_restricts_access(self, user, anon, admin):
+    def test_restrictive_listing(self, user, anon, admin):
         """
         Ensure if 2 views used, the leasy privilege is in effect
         """
 
         # Default behaviour; listing
-        assert_allowed(admin, get="/redirectedviews/")
-        assert_disallowed(anon, get="/redirectedviews/")
-        assert_disallowed(user, get="/redirectedviews/")
+        assert_allowed(admin, get="/only_admin_list/")
+        assert_disallowed(anon, get="/only_admin_list/")
+        assert_disallowed(user, get="/only_admin_list/")
 
-        # Permissive action redirecting to 'list' should respect least privileges
-        assert_allowed(admin, get="/redirectedviews/all_allowed/")
-        assert_disallowed(anon, get="/redirectedviews/all_allowed/")
-        assert_disallowed(user, get="/redirectedviews/all_allowed/")
+        # Least privilege determined by main view itself
+        assert_allowed(admin, get="/only_admin_list/only_admin_allowed/")
+        assert_disallowed(anon, get="/only_admin_list/only_admin_allowed/")
+        assert_disallowed(user, get="/only_admin_list/only_admin_allowed/")
 
-        # Restrictive action redirecting to 'list' should respect least privileges
-        assert_allowed(admin, get="/redirectedviews/admin_allowed/")
-        assert_disallowed(anon, get="/redirectedviews/admin_allowed/")
-        assert_disallowed(user, get="/redirectedviews/admin_allowed/")
+        assert_disallowed(admin, get="/only_admin_list/only_anon_allowed/")
+        assert_disallowed(anon, get="/only_admin_list/only_anon_allowed/")
+        assert_disallowed(user, get="/only_admin_list/only_anon_allowed/")
 
-        assert_disallowed(admin, get="/redirectedviews/anon_allowed/")
-        assert_disallowed(anon, get="/redirectedviews/anon_allowed/")
-        assert_disallowed(user, get="/redirectedviews/anon_allowed/")
+        assert_allowed(admin, get="/only_admin_list/all_allowed/")
+        assert_disallowed(anon, get="/only_admin_list/all_allowed/")
+        assert_disallowed(user, get="/only_admin_list/all_allowed/")
+
+    def test_permissive_listing(self, user, anon, admin):
+        assert_allowed(admin, get="/anyone_list/")
+        assert_allowed(anon, get="/anyone_list/")
+        assert_allowed(user, get="/anyone_list/")
+
+        # Least privilege determined by redirection itself
+        assert_allowed(admin, get="/anyone_list/only_admin_allowed/")
+        assert_disallowed(anon, get="/anyone_list/only_admin_allowed/")
+        assert_disallowed(user, get="/anyone_list/only_admin_allowed/")
+
+        assert_disallowed(admin, get="/anyone_list/only_anon_allowed/")
+        assert_allowed(anon, get="/anyone_list/only_anon_allowed/")
+        assert_disallowed(user, get="/anyone_list/only_anon_allowed/")
+
+        assert_allowed(admin, get="/anyone_list/all_allowed/")
+        assert_allowed(anon, get="/anyone_list/all_allowed/")
+        assert_allowed(user, get="/anyone_list/all_allowed/")
