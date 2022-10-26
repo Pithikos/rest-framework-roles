@@ -50,22 +50,6 @@ class RestViewSet(drf.viewsets.ViewSet):
         return HttpResponse(_func_name())
 
 
-class RestAdminFallback(drf.generics.GenericAPIView):
-    view_permissions = {"get": {"user": True}}
-    permission_classes = (drf.permissions.IsAdminUser,)
-
-    def get(self, request):
-        return HttpResponse(_func_name())
-
-
-class RestAllowAnyFallback(drf.generics.GenericAPIView):
-    view_permissions = {"get": {"user": True}}
-    permission_classes = (drf.permissions.AllowAny,)
-
-    def get(self, request):
-        return HttpResponse(_func_name())
-
-
 class RestClassMixed1(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
@@ -112,8 +96,6 @@ urlpatterns = [
 
     # Normal class
     path('rest_class_view', RestAPIView.as_view()),
-    path('rest_admin_fallback', RestAdminFallback.as_view()),
-    path('rest_allow_any_fallback', RestAllowAnyFallback.as_view()),
 
     # Similar to functions
     path('rest_class_viewset', RestViewSet.as_view({'get': 'list'})),
@@ -196,33 +178,3 @@ def test_calling_unmixed_verb(db, rest_resolver, client):
     # Calling patch (which is not defined)
     response = client.patch('/listed_users/')
     assert response.status_code == 405
-
-
-class TestDrfCheckPermissions():
-    """
-    Ensure DRF's check_permissions plays nicely and least privileges used.
-    """
-
-    @pytest.mark.urls(__name__)
-    def test_restrictive_fallback(self, db, rest_resolver, client):
-
-        # Anon gets caught by fallback (IsAdminUser)
-        resp = client.get('/rest_admin_fallback')
-        assert resp.status_code == status.HTTP_403_FORBIDDEN
-
-        # User although has an explicit 'allowed' is still caught by IsAdminUser (rule of least privileges)
-        client.force_authenticate(User.objects.create(username='test'))
-        resp = client.get('/rest_admin_fallback')
-        assert resp.status_code == status.HTTP_403_FORBIDDEN
-
-    @pytest.mark.urls(__name__)
-    def test_permissive_fallback(self, db, rest_resolver, client):
-
-        # Anon not allowed due to 'allowed' clause
-        resp = client.get('/rest_allow_any_fallback')
-        assert resp.status_code == status.HTTP_403_FORBIDDEN
-
-        # User allowed due to 'allowed' and AllowAny
-        client.force_authenticate(User.objects.create(username='test'))
-        resp = client.get('/rest_allow_any_fallback')
-        assert resp.status_code == status.HTTP_200_OK
