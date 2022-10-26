@@ -15,6 +15,8 @@ from rest_framework_roles import patching
 
 MAX_VIEW_REDIRECTION_DEPTH = 3  # Disallow too much depth since it can potentially become expensive
 
+GRANTORS_ATTR = "_rfr_granted"
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,11 @@ def check_permissions(request, view, view_instance, view_permissions=None):
         Granted permission - True or False. None if no role matched.
     """
     assert isinstance(view_permissions, tuple) or view_permissions == None
+
+    # OPTIMIZATION: Avoid double-checking the same permissions twice
+    grantors = getattr(request, GRANTORS_ATTR, set())
+    if grantors and view_permissions in grantors:
+        return True
 
     # Allow checking permissions again in case of redirected views
     if hasattr(request, "_permissions_checked"):
@@ -95,4 +102,6 @@ def check_permissions(request, view, view_instance, view_permissions=None):
                     raise Misconfigured("From v0.4.0+ you need to use 'anyof', 'allof' or similar for multiple grant checks")
 
                 if granted:
+                    grantors.add(view_permissions)
+                    setattr(request, GRANTORS_ATTR, grantors)
                     return granted
