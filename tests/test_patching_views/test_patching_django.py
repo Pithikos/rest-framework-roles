@@ -10,7 +10,7 @@ from django.http import HttpResponse
 
 # from .urls import *
 from rest_framework_roles import patching
-from ..utils import _func_name, is_preview_patched, is_predispatch_patched
+from ..utils import _func_name, is_preview_patched
 
 
 # -------------------------------- Setup app -----------------------------------
@@ -52,7 +52,6 @@ def test_patching_instance_views(django_resolver, client):
     # Class methods should NEVER be patched due to different classes sharing inherited mixins
     match = django_resolver.resolve('/django_class_view')
     cls = match.func.view_class
-    assert is_predispatch_patched(cls.dispatch)
     assert not is_preview_patched(cls.get)
     assert not is_preview_patched(cls.view_unpatched)
 

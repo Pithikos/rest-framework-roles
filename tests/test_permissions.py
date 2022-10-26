@@ -58,6 +58,8 @@ class UserViewSet(drf.viewsets.ModelViewSet):
         'only_admin': {'admin': True},
     }
 
+    STATE = 0  # to check if state changes in some tests
+
     def redirect_view(self, request):
         if request.method == 'GET':
             return self.retrieve(request)
@@ -83,6 +85,7 @@ class UserViewSet(drf.viewsets.ModelViewSet):
 
     @drf.decorators.action(detail=False)
     def noexplicitpermission(self, request):
+        UserViewSet.STATE += 1
         return HttpResponse()
 
 
@@ -211,6 +214,9 @@ class TestLeastPrivilege():
 
     def test_missing_view_permission_yields_no_privilege(self, anon):
         assert_disallowed(anon, get=f'/users/noexplicitpermission/')
+
+        # Ensure no state changed since no wrapped_view to call check_permissions
+        assert UserViewSet.STATE == 0
 
     def test_vanilla_viewset_yields_no_privilege(self, anon):
         assert_disallowed(anon, get=f'/no_custom_permission_classes_no_view_permissions/')

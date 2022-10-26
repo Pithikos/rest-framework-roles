@@ -72,23 +72,25 @@ def wrapped_handler(handler, handler_permissions):
     return wrapped
 
 
-def wrapped_finalize_response(original_finalize_response):
-    def wrapped(self, request, response, *args, **kwargs):
-
-        # If no view has been guarded explicitly fallback to denying permission
-        if not hasattr(request, permissions.GRANTED_FLAG):
-            raise PermissionDenied('Permission denied for user.')
-
-        return original_finalize_response(self, request, response, *args, **kwargs)
-    return wrapped
-
-
 def wrapped_check_permissions(original_check_permissions):
     def wrapped(self, request):
 
-        # Bypass DRF's check_permissions since we if are here, it means that we are using the new flow
-        # for permission checking
-        pass
+        def has_protected_handler(self, request):
+            """
+            Determine if view_permissions has an entry for corresponding request handler
+            """
+            if self.action in self.view_permissions:
+                return True
+            return False
+
+        # Deny access when no corresponding handler found in view_permissions
+        #
+        # This is since in that case, wrapped_handler will never fire and hence
+        # neither will check_permissions. So we fallback to denying access for
+        # such cases.
+        if not has_protected_handler(self, request):
+            logger.warn(f"{self.__class__.__name__}: Handler not specified explicitly in 'view_permissions'. Denying access")
+            raise PermissionDenied('Permission denied for user.')
 
     return wrapped
 
@@ -126,7 +128,7 @@ def get_view_class(callback):
 
 def patch(urlconf=None):
     """
-    Do the patching starting from URLs
+    Do the patching starting from the URLs
 
     Original DRF flow:
         1. dispatch()
@@ -140,8 +142,10 @@ def patch(urlconf=None):
             2. wrapped_handler()
                 3. check_role_permissions()
                 4. handler()
-            5. finalize_response():
-                6. check roles granted
+                5. finalize_response()
+
+    Our aim is to protect mentioned views in view_permissions. For view_permissions
+    but with non-mentioned views the default behaviour is to deny permission.
 
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
@@ -192,12 +196,8 @@ def patch(urlconf=None):
                 raise Misconfigured(f"Unknown method '{handler_name}' found in {cls.__name__}.view_permissions")
 
         # Wrap DRF's check_permissions
-        cls.check_permissions = wrapped_check_permissions(cls.check_permissions)
-
-        # Wrap finalize_response for new flow
-        old_finalize = getattr(cls, "finalize_response")
-        new_finalize = wrapped_finalize_response(old_finalize)
-        setattr(cls, "finalize_response", new_finalize)
+        if hasattr(cls, "check_permissions"):
+            cls.check_permissions = wrapped_check_permissions(cls.check_permissions)
 
     return patch_classes
 

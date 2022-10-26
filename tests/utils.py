@@ -48,10 +48,6 @@ def is_preview_patched(fn):
     return 'wrapped_view' in str(fn)
 
 
-def is_predispatch_patched(fn):
-    return 'wrapped_dispatch' in str(fn)
-
-
 def has_view_permissions(fn):
     return hasattr(fn, 'view_permissions')
 

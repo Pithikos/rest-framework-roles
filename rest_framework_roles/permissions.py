@@ -15,8 +15,6 @@ from rest_framework_roles import patching
 
 MAX_VIEW_REDIRECTION_DEPTH = 3  # Disallow too much depth since it can potentially become expensive
 
-GRANTED_FLAG = "_rfr_granted"
-
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +35,11 @@ def bool_role(request, view, role):
 
 def check_permissions(request, view, view_instance, view_permissions=None):
     """
-    Hook called for all 'guarded' views
+    Check if request is granted access or not
+
+    Permission should be granted IF AND ONLY IF there's a matching role that
+    explicitly grants permission. If no role was matched, access should be denied
+    by default.
 
     Args:
         view_permissions(list): List of permissions for the specific request handler
@@ -45,10 +47,6 @@ def check_permissions(request, view, view_instance, view_permissions=None):
     Return:
         Granted permission - True or False. None if no role matched.
     """
-
-    # Mark request as checked; none means that no role matched so could not determine permission
-    setattr(request, GRANTED_FLAG, None)
-
     assert isinstance(view_permissions, list) or view_permissions == None
 
     # Allow checking permissions again in case of redirected views
@@ -97,5 +95,4 @@ def check_permissions(request, view, view_instance, view_permissions=None):
                     raise Misconfigured("From v0.4.0+ you need to use 'anyof', 'allof' or similar for multiple grant checks")
 
                 if granted:
-                    setattr(request, GRANTED_FLAG, True)
                     return granted

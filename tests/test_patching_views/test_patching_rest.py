@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 
 from rest_framework_roles import patching
-from ..utils import UserSerializer, _func_name, is_preview_patched, is_predispatch_patched
+from ..utils import UserSerializer, _func_name, is_preview_patched
 from rest_framework_roles.roles import is_user
 
 
