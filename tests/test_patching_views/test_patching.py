@@ -8,7 +8,7 @@ from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view_und
 from .test_patching_rest import urlpatterns as rest_urlpatterns
 from .test_patching_django import django_function_view_undecorated
 from .test_patching_django import urlpatterns as django_urlpatterns
-from rest_framework_roles.patching import is_callback_method, get_view_class, wrapped_view
+from rest_framework_roles.patching import is_callback_method, get_view_class
 
 # NOTE: Do not patch in this module. It will double-patch and give an error.
 
@@ -38,13 +38,3 @@ def test_get_view_class():
 
     assert get_view_class(RestViewSet.as_view({'get': 'list'})) == RestViewSet
     assert get_view_class(RestViewSet.as_view({'get': 'custom_view'})) == RestViewSet
-
-
-def test_check_permissions_is_called_by_wrapped_view():
-    view = lambda r: HttpResponse(status=200)
-    request = RequestFactory().get('')
-    patched_view = wrapped_view(view, False, None)
-    with mock.patch('rest_framework_roles.permissions.check_permissions') as mocked_check_permissions:
-        response = patched_view(request)
-        assert response.status_code == 200
-        assert mocked_check_permissions.called

@@ -9,6 +9,7 @@ from django.http import HttpResponse
 
 from rest_framework_roles.roles import is_admin, is_user, is_anon
 from rest_framework_roles.granting import is_self, anyof, allof
+from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles import patching
 from .fixtures import admin, user, anon
 from .utils import assert_allowed, assert_disallowed, UserSerializer, get_response
@@ -127,15 +128,23 @@ class PermissiveListViewSet(drf.viewsets.ModelViewSet, ListRedirectionsMixin):
     }
 
 
-class WithoutViewPermissions(drf.viewsets.ModelViewSet):
+class NoViewPermissionsNoPermissionClasses(drf.viewsets.ModelViewSet):
     """Used to ensure we always use least privileges"""
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
 
+class WithCustomPermissionClassesAllowAny(drf.viewsets.ModelViewSet):
+    """Used to ensure views are protected properly even if user explicitly sets permission_classess"""
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    permission_classes = [drf.permissions.AllowAny]
+
+
 router = drf.routers.DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
-router.register(r'noviewpermissions', WithoutViewPermissions, basename='noviewpermissions')
+router.register(r'no_custom_permission_classes_no_view_permissions', NoViewPermissionsNoPermissionClasses, basename='no_custom_permission_classes_no_view_permissions')
+router.register(r'with_custom_permission_classes_allowany', WithCustomPermissionClassesAllowAny, basename='with_custom_permission_classes_allowany')
 router.register(r'only_admin_list', RestrictedListViewSet, basename='only_admin_list')
 router.register(r'anyone_list', PermissiveListViewSet, basename='anyone_list')
 urlpatterns = [path('', include(router.urls)),]
@@ -204,7 +213,7 @@ class TestLeastPrivilege():
         assert_disallowed(anon, get=f'/users/noexplicitpermission/')
 
     def test_vanilla_viewset_yields_no_privilege(self, anon):
-        assert_disallowed(anon, get=f'/noviewpermissions/')
+        assert_disallowed(anon, get=f'/no_custom_permission_classes_no_view_permissions/')
 
 
 TEST_CASES = [
@@ -224,9 +233,12 @@ TEST_CASES = [
     ("/users/noexplicitpermission/", "user", 403),
     ("/users/noexplicitpermission/", "anon", 403),
     ("/users/noexplicitpermission/", "admin", 403),
-    ("/noviewpermissions/", "user", 403),
-    ("/noviewpermissions/", "anon", 403),
-    ("/noviewpermissions/", "admin", 403),
+    ("/no_custom_permission_classes_no_view_permissions/", "user", 403),
+    ("/no_custom_permission_classes_no_view_permissions/", "anon", 403),
+    ("/no_custom_permission_classes_no_view_permissions/", "admin", 403),
+    ("/with_custom_permission_classes_allowany/", "user", 200),
+    ("/with_custom_permission_classes_allowany/", "anon", 200),
+    ("/with_custom_permission_classes_allowany/", "admin", 200),
     ("/zzzzzzzzzzzzzzzzzzzzzzzzzz/", "admin", 404),
 ]
 
@@ -244,7 +256,7 @@ class TestAccess():
         from rest_framework_roles.permissions import check_permissions as _original
         with patch('rest_framework_roles.permissions.check_permissions', wraps=_original) as mocked:
             assert get_response(user, get=url)
-        assert mocked.call_count <= 1
+        assert mocked.call_count <= 1, f"check_permissions called {mocked.call_count} times"
 
     @pytest.mark.parametrize("url,usertype,expected_status", TEST_CASES)
     def test_right_permission_granted(self, url, usertype, expected_status, user, anon, admin):
@@ -304,3 +316,13 @@ class TestViewRedirection():
         assert_allowed(admin, get="/anyone_list/all_allowed/")
         assert_allowed(anon, get="/anyone_list/all_allowed/")
         assert_allowed(user, get="/anyone_list/all_allowed/")
+
+
+@pytest.mark.urls(__name__)
+class TestWithCustomPermissionClassesAndViewPermissions:
+    def test_raises_misconfiguration(self):
+        """We don't allow both"""
+        assert UserViewSet.view_permissions  # preassumption
+        UserViewSet.permission_classes = [drf.permissions.AllowAny]
+        with pytest.raises(Misconfigured):
+            patching.patch()

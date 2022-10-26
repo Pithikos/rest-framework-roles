@@ -1,8 +1,3 @@
-"""
-Patching will use a mix of RolePermission and guarding views per-se (in cases where
-RolePermission is not called by DRF, e.g. cyclic views or overriding Django's 
-internals).
-"""
 import sys
 import importlib
 import logging
@@ -31,9 +26,6 @@ HTTP_VERBS = {
 }
 
 
-WRAPPED_DISPATCH_FLAG = "_rfr_wrapped"
-
-
 def is_django_configured():
     return settings._wrapped is not empty
 
@@ -52,8 +44,6 @@ def is_rest_function(self):
 def retrieve_handler(self, request):
     """
     Get handler as per DRF
-
-    self is the view class instance
     """
 
     # REF: https://github.com/encode/django-rest-framework/blob/master/rest_framework/views.py
@@ -66,41 +56,40 @@ def retrieve_handler(self, request):
     return handler
 
 
-def wrapped_dispatch(dispatch):
+def wrapped_handler(handler, handler_permissions):
     def wrapped(self, request, *args, **kwargs):
-        """
-        The class' dispatch is wrapped solely to patch at runtime the instance view
-        """
-
-        # NOTE: We patch all methods regardless if they are going to fire for this request. This
-        #       ensures that nesting/redirecting views on specific logic still offers the same
-        #       protection. The performance hit is neglitible and if we run into 1000s of view_permissions
-        #       entries, maybe it's time to split the view class.
-        for handler_name, handler_permissions in self._view_permissions.items():
-            if hasattr(self, handler_name):
-                handler = getattr(self, handler_name)
-                before = wrapped_view(handler, handler_permissions, view_instance=self)
-                setattr(self, handler_name, before)
-            else:
-                raise Misconfigured(f"Could not find view '{handler_name}' specified in '{self.__class__.__name__}.view_permissions'")
-
-        return dispatch(self, request, *args, **kwargs)
-
-    return wrapped
-
-
-def wrapped_view(handler, handler_permissions, view_instance):
-    def wrapped(request, *args, **kwargs):
         """
         A wrapped view is the view that was explicitly mentioned in view_permissions,
         hence it shall ALWAYS check for permissions.
         """
 
-        granted = permissions.check_permissions(request, handler, view_instance, handler_permissions)
+        granted = permissions.check_permissions(request, handler, self, handler_permissions)
         if not granted:
             raise PermissionDenied('Permission denied for user.')
 
-        return handler(request, *args, **kwargs)
+        return handler(self, request, *args, **kwargs)
+    
+    return wrapped
+
+
+def wrapped_finalize_response(original_finalize_response):
+    def wrapped(self, request, response, *args, **kwargs):
+
+        # If no view has been guarded explicitly fallback to denying permission
+        if not hasattr(request, permissions.GRANTED_FLAG):
+            raise PermissionDenied('Permission denied for user.')
+
+        return original_finalize_response(self, request, response, *args, **kwargs)
+    return wrapped
+
+
+def wrapped_check_permissions(original_check_permissions):
+    def wrapped(self, request):
+
+        # Bypass DRF's check_permissions since we if are here, it means that we are using the new flow
+        # for permission checking
+        pass
+
     return wrapped
 
 
@@ -137,11 +126,30 @@ def get_view_class(callback):
 
 def patch(urlconf=None):
     """
-    The patching will ensure RolePermission is used in permission_classes (unless already set)
+    Do the patching starting from URLs
+
+    Original DRF flow:
+        1. dispatch()
+            2. initial()
+                3.check_permissions()
+            4. handler()
+            5. finalize_response()
+
+    Patched flow:
+        1. dispatch()
+            2. wrapped_handler()
+                3. check_role_permissions()
+                4. handler()
+            5. finalize_response():
+                6. check roles granted
 
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
     """
+
+    # Patch DRF's default permission_classes
+    from rest_framework.settings import api_settings  # noqa
+    api_settings.DEFAULT_PERMISSION_CLASSES = [permissions.DenyAll]
 
     patterns = get_urlpatterns(urlconf)
 
@@ -155,33 +163,43 @@ def patch(urlconf=None):
         logger.debug(f'Collecting classes: {pattern} -> {cls}')
         collected_classes.add(cls)
 
-    # Patch classes
+    # Get classes that need patching
+    patch_classes = []
     for cls in collected_classes:
+        if hasattr(cls, "view_permissions"):
+            patch_classes.append(cls)
 
-        # Wrap dispatcher for cases where patching needs to be done at runtime.
-        if hasattr(cls.dispatch, WRAPPED_DISPATCH_FLAG):
-            raise Exception(f"{cls.__name__}.dispatch already patched")
-        try:
-            cls.dispatch = wrapped_dispatch(cls.dispatch)
-        except AttributeError as e:
-            raise Exception(f"Can't patch view for {pattern}. Are you sure it's a class-based view?")
-        setattr(cls.dispatch, WRAPPED_DISPATCH_FLAG, True)
+    # Patch classes
+    for cls in patch_classes:
 
-        # Enforce RolePermission for every class
-        if hasattr(cls, "permission_classes"):
-            if permissions.RolePermission not in cls.permission_classes:
-                if isinstance(cls.permission_classes, tuple):
-                    cls.permission_classes = (permissions.RolePermission,) + cls.permission_classes
-                else:
-                    cls.permission_classes.insert(0, permissions.RolePermission)
-        else:
-            cls.permission_classes = [permissions.RolePermission]
+        # Raise exception if by mistake class has both view_permissions and permission_classes since
+        # they can't work together. Note this will not catch the rare occassion that permission_classes = [DenyAll]
+        permission_classes = getattr(cls, "permission_classes", None)
+        if permission_classes and permission_classes != api_settings.DEFAULT_PERMISSION_CLASSES:
+            raise Misconfigured(f"{cls.__name__}: You can't use both 'permission_classes' and 'view_permissions' in the same class")
         
-        # Generate permissions for direct lookup
-        if hasattr(cls, 'view_permissions'):
-            cls._view_permissions = parse_view_permissions(cls.view_permissions)
-        else:
-            cls._view_permissions = {}
+        # Parse permissions for direct lookup
+        cls._view_permissions = parse_view_permissions(cls.view_permissions)
+        
+        # Wrap mentioned request handler in view_permissions.
+        for handler_name, handler_permissions in cls._view_permissions.items():
+            if hasattr(cls, handler_name):
+                handler_permissions = cls._view_permissions[handler_name]
+                old_handler = getattr(cls, handler_name)
+                new_handler = wrapped_handler(old_handler, handler_permissions)
+                setattr(cls, handler_name, new_handler)
+            else:
+                raise Misconfigured(f"Unknown method '{handler_name}' found in {cls.__name__}.view_permissions")
+
+        # Wrap DRF's check_permissions
+        cls.check_permissions = wrapped_check_permissions(cls.check_permissions)
+
+        # Wrap finalize_response for new flow
+        old_finalize = getattr(cls, "finalize_response")
+        new_finalize = wrapped_finalize_response(old_finalize)
+        setattr(cls, "finalize_response", new_finalize)
+
+    return patch_classes
 
 
 def get_urlpatterns(urlconf=None):

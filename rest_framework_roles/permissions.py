@@ -10,42 +10,20 @@ from rest_framework.permissions import BasePermission
 from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.granting import GrantChecker, bool_granted, TYPE_FUNCTION
 from rest_framework_roles import exceptions
+from rest_framework_roles import patching
 
-MAX_VIEW_REDIRECTION_DEPTH = 3  # Disallow too much depth since it can become expensive
 
+MAX_VIEW_REDIRECTION_DEPTH = 3  # Disallow too much depth since it can potentially become expensive
 
-class RolePermission(BasePermission):
-    """
-    Our DRF permission
-    """
-    def has_permission(self, request, view):
-
-        # In some cases 'view' will not have action. In those cases
-        # we rely on the wrapped_view to do the permission checking
-        if hasattr(view, "action"):
-
-            # To allow 405 Method Not Allowed
-            if not view.action:
-                return True
-            
-            # Deny access if view not explicitly guarded
-            try:
-                _permissions = view._view_permissions[view.action]
-            except KeyError:
-                return False
-        
-            # Check if
-            handler = getattr(view, view.action)
-            granted = check_permissions(request, handler, view, _permissions)
-
-            return granted
-
-        # If 'action' is missing then we let the checking to happen later on
-        # in the patched view
-        return True
+GRANTED_FLAG = "_rfr_granted"
 
 
 logger = logging.getLogger(__name__)
+
+
+class DenyAll(BasePermission):
+    def has_permission(self, request, view):
+        return False
 
 
 def bool_role(request, view, role):
@@ -67,6 +45,10 @@ def check_permissions(request, view, view_instance, view_permissions=None):
     Return:
         Granted permission - True or False. None if no role matched.
     """
+
+    # Mark request as checked; none means that no role matched so could not determine permission
+    setattr(request, GRANTED_FLAG, None)
+
     assert isinstance(view_permissions, list) or view_permissions == None
 
     # Allow checking permissions again in case of redirected views
@@ -106,13 +88,14 @@ def check_permissions(request, view, view_instance, view_permissions=None):
                 #   - We don't return False here, since *pre_view* will perform any other checks.
                 #
                 if type(granted) is bool:
-                    if granted:
-                        return True
+                    pass
                 elif type(granted) is TYPE_FUNCTION:
-                    if bool_granted(request, view, granted, view_instance):
-                        return True
+                    granted = bool_granted(request, view, granted, view_instance)
                 elif type(granted) is GrantChecker:
-                    if granted.evaluate(request, view, view_instance):
-                        return True
+                    granted = granted.evaluate(request, view, view_instance)
                 else:
                     raise Misconfigured("From v0.4.0+ you need to use 'anyof', 'allof' or similar for multiple grant checks")
+
+                if granted:
+                    setattr(request, GRANTED_FLAG, True)
+                    return granted
