@@ -113,4 +113,8 @@ def parse_view_permissions(view_permissions, roles=None):
     for view, rules in lookup.items():
         rules.sort(key=lambda item: item[1].cost)
 
+    # Finally turn into tuples for easy hashing
+    for view, rules in lookup.items():
+        lookup[view] = tuple(rules)
+
     return lookup

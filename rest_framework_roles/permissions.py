@@ -47,7 +47,7 @@ def check_permissions(request, view, view_instance, view_permissions=None):
     Return:
         Granted permission - True or False. None if no role matched.
     """
-    assert isinstance(view_permissions, list) or view_permissions == None
+    assert isinstance(view_permissions, tuple) or view_permissions == None
 
     # Allow checking permissions again in case of redirected views
     if hasattr(request, "_permissions_checked"):
