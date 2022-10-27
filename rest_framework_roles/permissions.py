@@ -36,7 +36,7 @@ def bool_role(request, view, role):
     return role
 
 
-def check_permissions(request, view, view_instance, view_permissions=None):
+def check_permissions(request, view, view_instance, view_permissions):
     """
     Check if request is granted access or not
 
@@ -66,13 +66,6 @@ def check_permissions(request, view, view_instance, view_permissions=None):
         return True
 
     logger.debug(f'Check permissions for {request}..')
-
-    # For decorated functions we check the permissions attached to the function
-    if not view_permissions:
-        try:
-            view_permissions = view._view_permissions
-        except AttributeError:
-            raise Exception("No passed view_permissions and no attached _view_permissions found")
 
     # Determine permissions
     for permissions in view_permissions:
