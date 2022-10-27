@@ -52,11 +52,6 @@ def check_permissions(request, view, view_instance, view_permissions=None):
     """
     assert isinstance(view_permissions, tuple) or view_permissions == None
 
-    # OPTIMIZATION: Avoid double-checking the same permissions twice
-    permissions_granted = getattr(request, PERMISSIONS_GRANTED_ATTR, set())
-    if permissions_granted and view_permissions in permissions_granted:
-        return True
-
     # Catch too deep redirections
     views_checked = getattr(request, VIEWS_CHECKED_ATTR, set())
     if view in views_checked:
@@ -64,6 +59,11 @@ def check_permissions(request, view, view_instance, view_permissions=None):
     views_checked.add(view)
     if len(views_checked) > MAX_VIEW_REDIRECTION_DEPTH:
         raise Exception(f"Permissions checked too many times for same request: {request}")
+
+    # OPTIMIZATION: Avoid double-checking the same permissions twice
+    permissions_granted = getattr(request, PERMISSIONS_GRANTED_ATTR, set())
+    if permissions_granted and view_permissions in permissions_granted:
+        return True
 
     logger.debug(f'Check permissions for {request}..')
 
