@@ -15,7 +15,8 @@ from rest_framework_roles import patching
 
 MAX_VIEW_REDIRECTION_DEPTH = 3  # Disallow too much depth since it can potentially become expensive
 
-GRANTORS_ATTR = "_rfr_granted"
+PERMISSIONS_GRANTED_ATTR = "_rfr_permissions_granted"
+VIEWS_CHECKED_ATTR = "_rfr_views_checked"
 
 
 logger = logging.getLogger(__name__)
@@ -52,19 +53,16 @@ def check_permissions(request, view, view_instance, view_permissions=None):
     assert isinstance(view_permissions, tuple) or view_permissions == None
 
     # OPTIMIZATION: Avoid double-checking the same permissions twice
-    grantors = getattr(request, GRANTORS_ATTR, set())
-    if grantors and view_permissions in grantors:
+    permissions_granted = getattr(request, PERMISSIONS_GRANTED_ATTR, set())
+    if permissions_granted and view_permissions in permissions_granted:
         return True
 
-    # Allow checking permissions again in case of redirected views
-    if hasattr(request, "_permissions_checked"):
-        if view in request._permissions_checked:
-            raise Exception(f"Implementation bug. Permissions already checked by {view}")
-        request._permissions_checked.add(view)
-    else:
-        request._permissions_checked = {view}  # Allows us to check if already been called
-
-    if len(request._permissions_checked) > MAX_VIEW_REDIRECTION_DEPTH:
+    # Catch too deep redirections
+    views_checked = getattr(request, VIEWS_CHECKED_ATTR, set())
+    if view in views_checked:
+        raise Exception(f"Permissions already checked for {view}. Implementation bug?")
+    views_checked.add(view)
+    if len(views_checked) > MAX_VIEW_REDIRECTION_DEPTH:
         raise Exception(f"Permissions checked too many times for same request: {request}")
 
     logger.debug(f'Check permissions for {request}..')
@@ -102,6 +100,6 @@ def check_permissions(request, view, view_instance, view_permissions=None):
                     raise Misconfigured("From v0.4.0+ you need to use 'anyof', 'allof' or similar for multiple grant checks")
 
                 if granted:
-                    grantors.add(view_permissions)
-                    setattr(request, GRANTORS_ATTR, grantors)
+                    permissions_granted.add(view_permissions)
+                    setattr(request, PERMISSIONS_GRANTED_ATTR, permissions_granted)
                     return granted
