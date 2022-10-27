@@ -21,15 +21,20 @@ def validate_config(config):
             raise django_exceptions.ImproperlyConfigured(f"Missing required setting '{required_setting}'")
 
 
-def load_roles(config=None):
-    """
-    Load roles from config
-    """
+def load_settings(config=None):
     if not config:
         from django.conf import settings
         config = settings.REST_FRAMEWORK_ROLES
     validate_config(config)
-    roles = config['ROLES']
+    return config
+
+
+def load_roles(config=None):
+    """
+    Load roles from config
+    """
+    settings = load_settings(config)
+    roles = settings['ROLES']
     if isinstance(roles, str):
         roles = import_string(roles)
     return roles
