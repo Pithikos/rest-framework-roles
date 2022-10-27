@@ -52,3 +52,10 @@ class GrantChecker():
             return self.SCHEMES[self.scheme](grants)
         except KeyError:
             raise Exception(f"Invalid scheme '{self.scheme}'")
+
+    def __hash__(self):
+        """
+        NOTE: Hashing does not take into account request. We simply want to check
+              that two GrantCheckers will check the same things
+        """
+        return hash(self.scheme) ^ hash(self.checkers)

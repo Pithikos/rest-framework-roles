@@ -1,6 +1,9 @@
+import pytest
+
 from rest_framework_roles.roles import is_admin, is_user, is_anon
-from rest_framework_roles.parsing import parse_roles, parse_view_permissions
+from rest_framework_roles.parsing import parse_roles, parse_view_permissions, get_permission_list
 from rest_framework_roles.decorators import role_checker
+from rest_framework_roles.granting import allof, anyof
 
 
 def test_parse_roles():
@@ -124,3 +127,48 @@ def test_rules_sorted_by_cost():
             (True, is_cheapo), (True, is_admin), (True, is_expensivo)
         )
     }
+
+
+@pytest.mark.parametrize("samehash,p1,p2", (
+    (True, ((True, is_user), (True, is_admin)), ((True, is_user), (True, is_admin))),
+    (False, ((True, is_user), (True, is_admin)), ((True, is_user), (True, is_anon))),
+))
+def test_hashing_permission_tuples(samehash, p1, p2):
+    if samehash:
+        assert hash(p1) == hash(p2)
+    else:
+        assert hash(p1) != hash(p2)
+
+
+@pytest.mark.parametrize("samehash,p1,p2", (
+    (True, anyof(True, True), anyof(True, True)),
+    (False, anyof(True, True), anyof(True, False)),
+    (False, allof(True, True), anyof(True, True)),
+    (True, anyof(is_admin, is_user), anyof(is_admin, is_user)),
+    (False, anyof(is_admin, is_user), anyof(is_user, is_admin)),  # order matters
+))
+def test_hashing_permission_helpers(samehash, p1, p2):
+    if samehash:
+        assert hash(p1) == hash(p2)
+    else:
+        assert hash(p1) != hash(p2)
+
+
+@pytest.mark.parametrize("samehash,p1,p2", (
+    (True, {"admin": True}, {"admin": True}),
+    (False, {"admin": True}, {"admin": False}),
+    (False, {"admin": True}, {"user": True}),
+    (True, {"admin": anyof(True)}, {"admin": anyof(True)}),
+))
+def test_hashing_permissions(samehash, p1, p2):
+    roles = parse_roles({
+        "admin": is_admin,
+        "user": is_user,
+        "anon": is_anon,
+    })
+    perm1 = tuple(get_permission_list(roles, p1))
+    perm2 = tuple(get_permission_list(roles, p2))
+    if samehash:
+        assert hash(perm1) == hash(perm2)
+    else:
+        assert hash(perm1) != hash(perm2)

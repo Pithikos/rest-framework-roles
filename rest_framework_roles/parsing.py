@@ -65,6 +65,16 @@ def parse_roles(roles_dict):
     return d
 
 
+def get_permission_list(parsed_roles, raw_permissions):
+    _permissions = []
+    for role, granted in raw_permissions.items():
+        _permissions.append((
+            granted,
+            parsed_roles[role]['role_checker'],
+        ))
+    return _permissions
+
+
 def parse_view_permissions(view_permissions, roles=None):
     """
     Transform view_permissions into a lookup table that can be used directly for checking permissions
@@ -87,17 +97,9 @@ def parse_view_permissions(view_permissions, roles=None):
 
     # Populate general and instance checkers
     for view_names, permissions in view_permissions.items():
-
-        _permissions = []
-        for role, granted in permissions.items():
-            _permissions.append((
-                granted,
-                roles[role]['role_checker'],
-            ))
-        
+        _permissions = get_permission_list(roles, permissions)
         for view_name in view_names.split(","):
             lookup[view_name] = _permissions
-
 
     # Sort by cost
     for view, rules in lookup.items():
