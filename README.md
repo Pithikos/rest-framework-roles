@@ -134,7 +134,7 @@ def not_updating_email(request, view):
 
 class UserViewSet(ModelViewSet):
     view_permissions = {
-        'update': {
+        'update,partial_update': {
             'user': allof(is_self, not_updating_email),
             'admin': True,
         },

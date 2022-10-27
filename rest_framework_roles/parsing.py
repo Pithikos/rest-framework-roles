@@ -67,22 +67,7 @@ def parse_roles(roles_dict):
 
 def parse_view_permissions(view_permissions, roles=None):
     """
-    Transform all configuration into a lookup table to be used for permission checking
-
-    Args:
-        roles(dict): Dict where key is the role name and value is a dict with
-                     role attributes
-        view_permissions(dict): E.g. {'view': 'myview', 'permissions':[]}
-
-    Output example:
-        {
-            'authentication.views.UserViewSet': {
-                'create': [
-                    (True, is_admin),
-                    (False, is_anon),
-                ]
-            }
-        }
+    Transform view_permissions into a lookup table that can be used directly for checking permissions
     """
     lookup = {}
     if not roles:
@@ -101,13 +86,18 @@ def parse_view_permissions(view_permissions, roles=None):
             raise Misconfigured(f"Role '{role}' found in view_permissions but such role not defined in ROLES")
 
     # Populate general and instance checkers
-    for view_name, permissions in view_permissions.items():
-        lookup[view_name] = []
+    for view_names, permissions in view_permissions.items():
+
+        _permissions = []
         for role, granted in permissions.items():
-            lookup[view_name].append((
+            _permissions.append((
                 granted,
                 roles[role]['role_checker'],
             ))
+        
+        for view_name in view_names.split(","):
+            lookup[view_name] = _permissions
+
 
     # Sort by cost
     for view, rules in lookup.items():

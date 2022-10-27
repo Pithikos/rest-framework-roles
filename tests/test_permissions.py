@@ -44,7 +44,7 @@ class UserViewSet(drf.viewsets.ModelViewSet):
 
     view_permissions = {
         'retrieve': {'user': is_self, 'admin': True},
-        'partial_update': {
+        'update,partial_update': {
             'user': allof(is_self, not_updating_email),
             'admin': True,
         },
@@ -332,3 +332,23 @@ class TestWithCustomPermissionClassesAndViewPermissions:
         UserViewSet.permission_classes = [drf.permissions.AllowAny]
         with pytest.raises(Misconfigured):
             patching.patch()
+
+
+@pytest.mark.urls(__name__)
+class TestGroupedPermissions:
+    def setup(self):
+        patching.patch()
+
+    def test_check_permissions_not_doublecalling(self, admin, user, anon):
+
+        from rest_framework_roles.permissions import check_permissions as og_check_permissions
+        from rest_framework_roles.permissions import _check_permissions as _og_check_permissions
+        with patch('rest_framework_roles.permissions.check_permissions', wraps=og_check_permissions) as mocked_check_permissions:
+            with patch('rest_framework_roles.permissions._check_permissions', wraps=_og_check_permissions) as _mocked_check_permissions:
+                assert_allowed(user, patch=f'/users/{user.id}/', data={'username': 'newusername'})
+
+        # check_permissions called twice due to the default update_partial -> update redirection
+        assert mocked_check_permissions.call_count == 2
+
+        # BUT the 3nd time we expect the checking to have been bypassed
+        assert _mocked_check_permissions.call_count == 1

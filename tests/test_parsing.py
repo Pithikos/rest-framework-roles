@@ -46,49 +46,49 @@ def test_parse_view_permissions():
     }
 
     view_permissions = {
-        'authentication.views.UserViewSet.create': {
+        'create': {
             'admin': True,
             'anon': False,
         },
-        'authentication.views.UserViewSet.retrieve': {
+        'retrieve': {
             'admin': True,
             'user': is_self,
         },
-        'authentication.views.UserViewSet.update': {
+        'update': {
             'admin': True,
             'user': True,
         },
-        'authentication.views.UserViewSet.partial_update': {
+        'partial_update': {
             'admin': True,
             'user': is_not_updating_permissions,
         },
-        'authentication.views.UserViewSet.me': {
+        'me': {
             'admin': True,
             'user': True,
         },
     }
 
     expected = {
-        'authentication.views.UserViewSet.create': [
+        'create': (
             (True, is_admin),
             (False, is_anon),
-        ],
-        'authentication.views.UserViewSet.retrieve': [
+        ),
+        'retrieve': (
             (True, is_admin),
             (is_self, is_user),
-        ],
-        'authentication.views.UserViewSet.update': [
+        ),
+        'update': (
             (True, is_admin),
             (True, is_user),
-        ],
-        'authentication.views.UserViewSet.partial_update': [
+        ),
+        'partial_update': (
             (True, is_admin),
             (is_not_updating_permissions, is_user),
-        ],
-        'authentication.views.UserViewSet.me': [
+        ),
+        'me': (
             (True, is_admin),
             (True, is_user),
-        ]
+        )
     }
     outcome = parse_view_permissions(view_permissions, roles)
     assert outcome == expected
@@ -111,7 +111,7 @@ def test_rules_sorted_by_cost():
     }
 
     permissions = {
-      'authentication.views.UserViewSet.create': {
+      'create': {
         'admin': True,
         'expensivo': True,
         'cheapo': True,
@@ -120,7 +120,7 @@ def test_rules_sorted_by_cost():
 
     lookup = parse_view_permissions(permissions, roles)
     assert lookup == {
-        'authentication.views.UserViewSet.create': [
+        'create': (
             (True, is_cheapo), (True, is_admin), (True, is_expensivo)
-        ]
+        )
     }
