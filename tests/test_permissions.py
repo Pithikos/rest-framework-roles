@@ -254,13 +254,13 @@ class TestAccess():
         patching.patch()
 
     @pytest.mark.parametrize("url,usertype,expected_status", TEST_CASES)
-    def test_check_permissions_called_max_once(self, url, usertype, expected_status, user, anon, admin):
+    def test_check_role_permissions_called_max_once(self, url, usertype, expected_status, user, anon, admin):
         """
         Ensure check_permissions is never double-called
         """
         user = locals()[usertype]
-        from rest_framework_roles.permissions import check_permissions as _original
-        with patch('rest_framework_roles.permissions.check_permissions', wraps=_original) as mocked:
+        from rest_framework_roles.permissions import check_role_permissions as _original
+        with patch('rest_framework_roles.permissions.check_role_permissions', wraps=_original) as mocked:
             assert get_response(user, get=url)
         assert mocked.call_count <= 1, f"check_permissions called {mocked.call_count} times"
 
@@ -339,16 +339,16 @@ class TestGroupedPermissions:
     def setup(self):
         patching.patch()
 
-    def test_check_permissions_not_doublecalling(self, admin, user, anon):
+    def test_check_role_permissions_not_doublecalling(self, admin, user, anon):
 
-        from rest_framework_roles.permissions import check_permissions as og_check_permissions
-        from rest_framework_roles.permissions import _check_permissions as _og_check_permissions
-        with patch('rest_framework_roles.permissions.check_permissions', wraps=og_check_permissions) as mocked_check_permissions:
-            with patch('rest_framework_roles.permissions._check_permissions', wraps=_og_check_permissions) as _mocked_check_permissions:
+        from rest_framework_roles.permissions import check_role_permissions as og_check_role_permissions
+        from rest_framework_roles.permissions import _check_role_permissions as _og_check_role_permissions
+        with patch('rest_framework_roles.permissions.check_role_permissions', wraps=og_check_role_permissions) as mocked_check_role_permissions:
+            with patch('rest_framework_roles.permissions._check_role_permissions', wraps=_og_check_role_permissions) as _mocked_check_role_permissions:
                 assert_allowed(user, patch=f'/users/{user.id}/', data={'username': 'newusername'})
 
         # check_permissions called twice due to the default update_partial -> update redirection
-        assert mocked_check_permissions.call_count == 2
+        assert mocked_check_role_permissions.call_count == 2
 
         # BUT the 3nd time we expect the checking to have been bypassed
-        assert _mocked_check_permissions.call_count == 1
+        assert _mocked_check_role_permissions.call_count == 1

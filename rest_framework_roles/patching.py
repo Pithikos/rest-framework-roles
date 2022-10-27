@@ -65,7 +65,7 @@ def wrapped_handler(handler, handler_permissions):
         hence it shall ALWAYS check for permissions.
         """
 
-        granted = permissions.check_permissions(request, handler, self, handler_permissions)
+        granted = permissions.check_role_permissions(request, handler, self, handler_permissions)
         if not granted:
             raise PermissionDenied('Permission denied for user.')
 

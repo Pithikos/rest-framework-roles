@@ -36,9 +36,7 @@ def bool_role(request, view, role):
     return role
 
 
-def _check_permissions(request, view, view_instance, view_permissions):
-
-    # import IPython; IPython.embed(using=False)
+def _check_role_permissions(request, view, view_instance, view_permissions):
 
     for permissions in view_permissions:
         granted, roles = permissions[0], permissions[1:]
@@ -48,7 +46,7 @@ def _check_permissions(request, view, view_instance, view_permissions):
             if bool_role(request, view, role):
 
                 role_name = role.__qualname__ if hasattr(role, '__qualname__') else role
-                logger.debug(f"check_permissions:{view.__name__}:{role_name}:{granted}")
+                logger.debug(f"check_role_permissions:{view.__name__}:{role_name}:{granted}")
 
                 # Check permission is granted:
                 #   - We only return once we have evaluated positevely a granting rule.
@@ -71,7 +69,7 @@ def _check_permissions(request, view, view_instance, view_permissions):
                     return granted
 
 
-def check_permissions(request, view, view_instance, view_permissions):
+def check_role_permissions(request, view, view_instance, view_permissions):
     """
     Check if request is granted access or not
 
@@ -104,4 +102,4 @@ def check_permissions(request, view, view_instance, view_permissions):
     logger.debug(f'Check permissions for {request}..')
 
     # Determine permissions
-    return _check_permissions(request, view, view_instance, view_permissions)
+    return _check_role_permissions(request, view, view_instance, view_permissions)
