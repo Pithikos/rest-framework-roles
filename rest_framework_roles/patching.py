@@ -25,6 +25,8 @@ HTTP_VERBS = {
     'trace',
 }
 
+DENY_ALL_PERMISSION = [(True, False)]  # Evaluates role always to True and granted to False
+
 
 def is_django_configured():
     return settings._wrapped is not empty
@@ -75,21 +77,32 @@ def wrapped_handler(handler, handler_permissions):
 def wrapped_check_permissions(original_check_permissions):
     def wrapped(self, request):
 
-        def has_protected_handler(self, request):
+        def is_explicitly_protected(self, request):
             """
             Determine if view_permissions has an entry for corresponding request handler
-            """
-            if self.action in self.view_permissions:
-                return True
+            """            
+            if hasattr(self, "action"):
+                # e.g. ModelViewSet, ViewSet
+                if self.action in self._view_permissions:
+                    return True
+            else:
+                # e.g. GenericAPIView
+                handler = retrieve_handler(self, request)
+                if handler.__name__ in self._view_permissions:
+                    return True
+                else:
+                    # This is a case where we can't determine the final handler at this point.
+                    # So for safety we return assuming there isn't one
+                    pass
             return False
 
         # Deny access when no corresponding handler found in view_permissions
         #
         # This is since in that case, wrapped_handler will never fire and hence
         # neither will check_permissions. So we fallback to denying access for
-        # such cases.
-        if not has_protected_handler(self, request):
-            logger.warn(f"{self.__class__.__name__}: Handler not specified explicitly in 'view_permissions'. Denying access")
+        # these cases.
+        if not is_explicitly_protected(self, request):
+            logger.warning(f"{self.__class__.__name__}: Handler not specified explicitly in 'view_permissions'. Denying access")
             raise PermissionDenied('Permission denied for user.')
 
     return wrapped
