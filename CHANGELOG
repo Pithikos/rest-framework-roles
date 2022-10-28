@@ -1,0 +1,28 @@
+1.0.0
+=====
+
+This version is a major refactoring to only support latest DRF and ease future maintenace, plus ensuring least privilege by default.
+
+Dropped features
+  - Officially only support DRF (vanilla Django might still work fine but not thoroughly tested)
+  - Totally drop support for function-based views
+  - Totally drop support for 'allowed' and 'disallowed' decorators
+
+New features
+  - Least privileges by default
+  - Grouping views in view_permissions
+  - Caching in redirections so same checks never occur twice
+  - Too deep redirections now detected and will throw exception
+
+Changes
+  - Rename setting 'roles' to 'ROLES'
+  - Now permission_classes and view_permissions are mutually exclusive in view classes
+  - Framework now patches DRF's DEFAULT_PERMISSION_CLASSES with DenyAll
+
+
+0.4.1
+=====
+
+  - Support for Django 3
+  - Support for Django REST Framework
+  - Support both class-based and function-based views

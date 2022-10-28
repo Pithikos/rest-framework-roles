@@ -1,6 +1,9 @@
+import pytest
+
 from rest_framework_roles.roles import is_admin, is_user, is_anon
-from rest_framework_roles.parsing import parse_roles, parse_view_permissions
+from rest_framework_roles.parsing import parse_roles, parse_view_permissions, get_permission_list
 from rest_framework_roles.decorators import role_checker
+from rest_framework_roles.granting import allof, anyof
 
 
 def test_parse_roles():
@@ -46,49 +49,49 @@ def test_parse_view_permissions():
     }
 
     view_permissions = {
-        'authentication.views.UserViewSet.create': {
+        'create': {
             'admin': True,
             'anon': False,
         },
-        'authentication.views.UserViewSet.retrieve': {
+        'retrieve': {
             'admin': True,
             'user': is_self,
         },
-        'authentication.views.UserViewSet.update': {
+        'update': {
             'admin': True,
             'user': True,
         },
-        'authentication.views.UserViewSet.partial_update': {
+        'partial_update': {
             'admin': True,
             'user': is_not_updating_permissions,
         },
-        'authentication.views.UserViewSet.me': {
+        'me': {
             'admin': True,
             'user': True,
         },
     }
 
     expected = {
-        'authentication.views.UserViewSet.create': [
+        'create': (
             (True, is_admin),
             (False, is_anon),
-        ],
-        'authentication.views.UserViewSet.retrieve': [
+        ),
+        'retrieve': (
             (True, is_admin),
             (is_self, is_user),
-        ],
-        'authentication.views.UserViewSet.update': [
+        ),
+        'update': (
             (True, is_admin),
             (True, is_user),
-        ],
-        'authentication.views.UserViewSet.partial_update': [
+        ),
+        'partial_update': (
             (True, is_admin),
             (is_not_updating_permissions, is_user),
-        ],
-        'authentication.views.UserViewSet.me': [
+        ),
+        'me': (
             (True, is_admin),
             (True, is_user),
-        ]
+        )
     }
     outcome = parse_view_permissions(view_permissions, roles)
     assert outcome == expected
@@ -111,7 +114,7 @@ def test_rules_sorted_by_cost():
     }
 
     permissions = {
-      'authentication.views.UserViewSet.create': {
+      'create': {
         'admin': True,
         'expensivo': True,
         'cheapo': True,
@@ -120,7 +123,52 @@ def test_rules_sorted_by_cost():
 
     lookup = parse_view_permissions(permissions, roles)
     assert lookup == {
-        'authentication.views.UserViewSet.create': [
+        'create': (
             (True, is_cheapo), (True, is_admin), (True, is_expensivo)
-        ]
+        )
     }
+
+
+@pytest.mark.parametrize("samehash,p1,p2", (
+    (True, ((True, is_user), (True, is_admin)), ((True, is_user), (True, is_admin))),
+    (False, ((True, is_user), (True, is_admin)), ((True, is_user), (True, is_anon))),
+))
+def test_hashing_permission_tuples(samehash, p1, p2):
+    if samehash:
+        assert hash(p1) == hash(p2)
+    else:
+        assert hash(p1) != hash(p2)
+
+
+@pytest.mark.parametrize("samehash,p1,p2", (
+    (True, anyof(True, True), anyof(True, True)),
+    (False, anyof(True, True), anyof(True, False)),
+    (False, allof(True, True), anyof(True, True)),
+    (True, anyof(is_admin, is_user), anyof(is_admin, is_user)),
+    (False, anyof(is_admin, is_user), anyof(is_user, is_admin)),  # order matters
+))
+def test_hashing_permission_helpers(samehash, p1, p2):
+    if samehash:
+        assert hash(p1) == hash(p2)
+    else:
+        assert hash(p1) != hash(p2)
+
+
+@pytest.mark.parametrize("samehash,p1,p2", (
+    (True, {"admin": True}, {"admin": True}),
+    (False, {"admin": True}, {"admin": False}),
+    (False, {"admin": True}, {"user": True}),
+    (True, {"admin": anyof(True)}, {"admin": anyof(True)}),
+))
+def test_hashing_permissions(samehash, p1, p2):
+    roles = parse_roles({
+        "admin": is_admin,
+        "user": is_user,
+        "anon": is_anon,
+    })
+    perm1 = tuple(get_permission_list(roles, p1))
+    perm2 = tuple(get_permission_list(roles, p2))
+    if samehash:
+        assert hash(perm1) == hash(perm2)
+    else:
+        assert hash(perm1) != hash(perm2)
