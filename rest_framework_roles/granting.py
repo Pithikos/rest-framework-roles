@@ -1,3 +1,6 @@
+from rest_framework_roles import exceptions
+
+
 TYPE_FUNCTION = type(lambda x: x)
 
 
@@ -30,10 +33,13 @@ class GrantChecker():
     Checks if grant should be given based on passed scheme and checkers
     """
 
-    ALLOWED_SCHEMES = ('all', 'any')
+    SCHEMES = {
+        'all': all,
+        'any': any,
+    }
 
     def __init__(self, scheme, checkers):
-        assert scheme in self.ALLOWED_SCHEMES, f"Invalid scheme; '{scheme}'. Must be one of {self.ALLOWED_SCHEMES}"
+        assert scheme in self.SCHEMES.keys(), f"Invalid scheme; '{scheme}'. Must be one of {self.SCHEMES.keys()}"
         for checker in checkers:
             if type(checker) not in (TYPE_FUNCTION, bool):
                 raise Exception("Grant checker must be either a boolean or a function evaluationg to boolean")
@@ -42,9 +48,14 @@ class GrantChecker():
 
     def evaluate(self, request, view, view_instance):
         grants = [bool_granted(request, view, checker, view_instance) for checker in self.checkers]
-        if self.scheme == 'all':
-            return all(grants)
-        elif self.scheme == 'any':
-            return any(grants)
-        else:
+        try:
+            return self.SCHEMES[self.scheme](grants)
+        except KeyError:
             raise Exception(f"Invalid scheme '{self.scheme}'")
+
+    def __hash__(self):
+        """
+        NOTE: Hashing does not take into account request. We simply want to check
+              that two GrantCheckers will check the same things
+        """
+        return hash(self.scheme) ^ hash(self.checkers)

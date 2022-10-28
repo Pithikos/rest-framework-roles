@@ -12,7 +12,7 @@ except ImportError:
     from distutils.command.install import install
 
 
-VERSION = '0.4.1'
+VERSION = '1.0.0'
 
 
 def get_tag_version():
@@ -38,6 +38,11 @@ class VerifyVersionCommand(install):
             sys.exit(f"Git tag: {tag} does not match the version of this app: {VERSION}")
 
 
+INSTALL_REQUIRES = [
+    "djangorestframework",
+]
+
+
 setup(
     name='rest_framework_roles',
     version=VERSION,
@@ -49,11 +54,19 @@ setup(
     license='LICENSE',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    install_requires=[],
+    install_requires=INSTALL_REQUIRES,
     python_requires='>=3',
     keywords=[
         'permissions',
         'roles',
+        'users',
+        'django',
+        'rest',
+        'drf',
+        'acl',
+        'security',
+        'rest framework',
+        'access control'
     ],
     classifiers=[
         'Framework :: Django',
