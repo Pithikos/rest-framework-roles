@@ -28,7 +28,7 @@ def test_is_callback_method():
     assert is_callback_method(get_pattern('django_class_view').callback)
     assert is_callback_method(get_pattern('rest_class_view').callback)
     assert is_callback_method(get_pattern('rest_class_viewset').callback)
-    assert is_callback_method(get_pattern('rest_class_mixed').callback)
+    assert is_callback_method(get_pattern('list_model_mixin_admin_only').callback)
 
 
 def test_get_view_class():

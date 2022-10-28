@@ -58,7 +58,7 @@ def retrieve_handler(self, request):
     return handler
 
 
-def wrapped_handler(handler, handler_permissions):
+def _rfr_wrapped_handler(handler, handler_permissions):
     def wrapped(self, request, *args, **kwargs):
         """
         A wrapped view is the view that was explicitly mentioned in view_permissions,
@@ -74,8 +74,11 @@ def wrapped_handler(handler, handler_permissions):
     return wrapped
 
 
-def wrapped_check_permissions(original_check_permissions):
+def _rfr_wrapped_check_permissions(original_check_permissions):
     def wrapped(self, request):
+        """
+        Bypass normal check_permissions behaviour when we use check_role_permissions
+        """
         handler = retrieve_handler(self, request)
 
         def is_explicitly_protected(self, request):
@@ -86,6 +89,10 @@ def wrapped_check_permissions(original_check_permissions):
                 # e.g. ModelViewSet, ViewSet
                 if self.action in self._view_permissions:
                     return True
+            elif handler.__qualname__.startswith("_rfr_wrapped_handler."):
+                # If we have wrapped the handler, it means that it was due
+                # to being explicitly mentioned in view_permissions
+                return True
             else:
                 # e.g. GenericAPIView
                 if handler.__name__ in self._view_permissions:
@@ -98,7 +105,7 @@ def wrapped_check_permissions(original_check_permissions):
 
         # Deny access when no corresponding handler found in view_permissions
         #
-        # This is since in that case, wrapped_handler will never fire and hence
+        # This is since in that case, _rfr_wrapped_handler will never fire and hence
         # neither will check_permissions. So we fallback to denying access for
         # these cases.
         if handler.__name__ == "http_method_not_allowed":
@@ -155,7 +162,7 @@ def patch(urlconf=None):
 
     Patched flow:
         1. dispatch()
-            2. wrapped_handler()
+            2. _rfr_wrapped_handler()
                 3. check_role_permissions()
                 4. handler()
                 5. finalize_response()
@@ -206,14 +213,14 @@ def patch(urlconf=None):
             if hasattr(cls, handler_name):
                 handler_permissions = cls._view_permissions[handler_name]
                 old_handler = getattr(cls, handler_name)
-                new_handler = wrapped_handler(old_handler, handler_permissions)
+                new_handler = _rfr_wrapped_handler(old_handler, handler_permissions)
                 setattr(cls, handler_name, new_handler)
             else:
                 raise Misconfigured(f"Unknown method '{handler_name}' found in {cls.__name__}.view_permissions")
 
         # Wrap DRF's check_permissions
         if hasattr(cls, "check_permissions"):
-            cls.check_permissions = wrapped_check_permissions(cls.check_permissions)
+            cls.check_permissions = _rfr_wrapped_check_permissions(cls.check_permissions)
 
     return patch_classes
 

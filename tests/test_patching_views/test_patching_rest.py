@@ -44,31 +44,34 @@ class RestAPIView(drf.views.APIView):  # This is the mother class of all classes
         return HttpResponse(_func_name())
 
 
+# class SimpleRedirection(drf.views.APIView):
+
+
 class RestViewSet(drf.viewsets.ViewSet):
     view_permissions = {'list': {'admin': True}}
     def list(self, request):
         return HttpResponse(_func_name())
 
 
-class RestClassMixed1(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
+class ListModelMixinAdminOnly(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    view_permissions = {'list': {'admin': True}}
+    view_permissions = {'list,get': {'admin': True}}
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
 
-class RestClassMixed2(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
+class ListModelMixinNoone(drf.mixins.ListModelMixin, drf.generics.GenericAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    view_permissions = {'list': {'admin': False}}
+    view_permissions = {'list,get': {}}
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
 
-class RestClassMixedViewset(drf.mixins.ListModelMixin, drf.viewsets.GenericViewSet):
+class ListModelMixinAnonOnly(drf.mixins.ListModelMixin, drf.viewsets.GenericViewSet):
     """ Difference with GenericAPIView mixins, is that this can be used with router """
     serializer_class = UserSerializer
     queryset = User.objects.all()
@@ -87,7 +90,7 @@ class RestClassModel(drf.viewsets.ModelViewSet):
 
 router = drf.routers.DefaultRouter()
 router.register(r'users', RestClassModel, basename='user')
-router.register(r'listed_users', RestClassMixedViewset, basename='listed_users')
+router.register(r'list_model_mixin_anon_only', ListModelMixinAnonOnly, basename='list_model_mixin_anon_only')
 
 
 urlpatterns = [
@@ -101,8 +104,8 @@ urlpatterns = [
     path('rest_class_viewset', RestViewSet.as_view({'get': 'list'})),
 
     # Etc..
-    path('rest_class_mixed1', RestClassMixed1.as_view()),
-    path('rest_class_mixed2', RestClassMixed2.as_view()),
+    path('list_model_mixin_admin_only', ListModelMixinAdminOnly.as_view()),
+    path('list_model_mixin_noone', ListModelMixinNoone.as_view()),
     path('', include(router.urls)),
 ]
 
@@ -118,51 +121,26 @@ def rest_resolver():
 
 
 @pytest.mark.urls(__name__)
-def test_class_views_specified_methods_patched(rest_resolver, client):
-    # REST Framework essentially redirects classic Django views to a higher level
-    # interface. e.g. self.get -> self.retrieve
-    #
-    # We need to ensure that only the specified views get patched and nothing more
-    # for classes.
-    match = rest_resolver.resolve('/rest_class_mixed1')
-    assert not is_preview_patched(match.func.cls.get)
-
-    def _test_instance(self, request):
-        assert self.get
-        assert self.list
-        assert not is_preview_patched(self.get)
-        assert is_preview_patched(self.list)
-
-    # We patch 'initial' since that is called inside the original dispatch
-    # so gives us self after the pre-dispatch hook runs
-    with patch.object(RestClassMixed1, 'initial', new=_test_instance):
-        resp = client.get('/rest_class_mixed1')
-        assert resp.status_code != 404
-
-
-@pytest.mark.urls(__name__)
 def test_class_method_not_patched(db, rest_resolver, client):
     """
     One or more class views can share the same mixin, hence we don't want to patch
     the class method but instead the methods in the instances.
     """
-    assert rest_resolver.resolve('/rest_class_mixed1') != rest_resolver.resolve('/rest_class_mixed2')
+    assert rest_resolver.resolve('/list_model_mixin_admin_only') != rest_resolver.resolve('/list_model_mixin_noone')
 
     admin = User.objects.create(username='admin', is_superuser=True)
     client.force_authenticate(admin)
-    resp = client.get('/rest_class_mixed1')
+    resp = client.get('/list_model_mixin_admin_only')
     assert resp.status_code == 200
-    resp = client.get('/rest_class_mixed2')
+    resp = client.get('/list_model_mixin_noone')
     assert resp.status_code == 403
-    resp = client.get('/rest_class_mixed1')
+    resp = client.get('/list_model_mixin_admin_only')
     assert resp.status_code == 200
-    resp = client.get('/rest_class_mixed2')
+    resp = client.get('/list_model_mixin_noone')
     assert resp.status_code == 403
 
-    # Ensure class method of viewsets or mixin not wrapped (aka patched)
-    assert RestClassMixed1.get.__qualname__ == "RestClassMixed1.get"
-    assert RestClassMixed2.get.__qualname__ == "RestClassMixed2.get"
-    assert drf.mixins.ListModelMixin.list.__qualname__ == "ListModelMixin.list"
+    # Ensure we patch the inherited mixin instead the mixin itself
+    assert not "wrapped" in drf.mixins.ListModelMixin.list.__qualname__
 
 
 @pytest.mark.urls(__name__)
@@ -172,9 +150,9 @@ def test_calling_unmixed_verb(db, rest_resolver, client):
     """
 
     # Normal case
-    response = client.get('/listed_users/')
+    response = client.get('/list_model_mixin_anon_only/')
     assert response.status_code == 200
 
     # Calling patch (which is not defined)
-    response = client.patch('/listed_users/')
+    response = client.patch('/list_model_mixin_anon_only/')
     assert response.status_code == 405
