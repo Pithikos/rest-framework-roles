@@ -10,12 +10,14 @@ Dropped features
 
 New features
   - Least privileges by default
+  - Grouping views in view_permissions
+  - Caching in redirections so same checks never occur twice
+  - Too deep redirections now detected and will throw exception
 
 Changes
   - Rename setting 'roles' to 'ROLES'
-  - Views found in view_permissions are patched explicitly to go via our framework
-  - Add RolePermission, and make it patched by default on classes without permission_classes
-  - Several fixes and more tests to ensure we don't check permissions way too many times for cyclic views (redirections)
+  - Now permission_classes and view_permissions are mutually exclusive in view classes
+  - Framework now patches DRF's DEFAULT_PERMISSION_CLASSES with DenyAll
 
 
 0.4.1
