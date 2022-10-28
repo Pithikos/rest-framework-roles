@@ -5,12 +5,15 @@ REST Framework Roles
 
 Role-based permissions for Django REST Framework.
 
-  - **Least privileges** by default.
+  - Least privileges by default.
   - Human readable **declarative** view-based permissions.
+  - Switch between DRF's permission_classes and this easily.
   - Protects you from accidentally exposing an endpoint on **view redirections**.
   - Generic & flexible. You decide the where and how of your access logic and storage.
 
-There's a [ton of similar frameworks](https://www.django-rest-framework.org/api-guide/permissions/#third-party-packages) out there requiring you an IQ of 141 or a PhD to comprehend. Hopefully this will keep you productive and safe.
+This works as a replacement for `permission_classes` on individual classes. This makes it easy to switch between this and the normal DRF behaviour depending on your needs.
+
+Note that also `DEFAULT_PERMISSIONS_CLASSES` is patched so by default all endpoints will be denied access by simply installing this.
 
 
 Installation
@@ -34,9 +37,11 @@ REST_FRAMEWORK_ROLES = {
 }
 ```
 
+Now all your endpoints default to *403 Forbidden* unless you specifically use `view_permissions` or DRF's `permission_classes` in view classes - one of the two, not both or you'll get an error. (Setting `permission_classes = [AllowAny]` on every individual class will emulate the default DRF behaviour.)
 
-Configuration
-=============
+
+Setting permissions
+===================
 
 
 First you need to define some roles like below
@@ -59,13 +64,13 @@ ROLES = {
     'user': is_user,
     'anon': is_anon,
 
-    # A few custom roles
+    # Some custom role examples
     'buyer': is_buyer,
     'seller': is_seller,
 }
 ```
 
-`is_admin`, `is_user`, etc. are simple functions that take `request` and `view` as parameters just like [DRF's behaviour](https://www.django-rest-framework.org/api-guide/permissions/).
+`is_admin`, `is_user`, etc. are simple functions that take `request` and `view` as parameters, similar to [DRF's behaviour](https://www.django-rest-framework.org/api-guide/permissions/).
 
 
 Next we need to define permissions for the views with `view_permissions`.
@@ -82,9 +87,10 @@ class UserViewSet(ModelViewSet):
     queryset = User.objects.all()
 
     view_permissions = {
-        'retrieve': {'user': is_self, 'admin': True},
-        'create': {'anon': True},
-        'list': {'admin': True},
+        'create': {'anon': True},  # only anonymous visitors allowed
+        'list': {'admin': True}, 
+        'retrieve,me': {'user': is_self},
+        'update,update_partial': {'user': is_self, 'admin': True},
     }
 
     @action(detail=False, methods=['get'])
@@ -93,38 +99,33 @@ class UserViewSet(ModelViewSet):
         return self.retrieve(request)
 ```
 
-Note that action `me` is just a redirect to the view `retrieve` so the permissions of *retrieve* will be used. You can specify a different permission for `me` as well, in which case both views will be checked.
+By default everyone is denied access to everything. So we need to 'whitelist' any views
+we want to give permission explicitly.
+
+For redirections like `me` (which redirects to `retrieve`), we need to give the same permissions to both or else we'll get 403 Forbidden.
+
+> In a view you can always check `_view_permissions` to see what permissions are in effect.
+
+> A request keeps track of all permissions checked so far. So  redirections don't affect performance since the same permissions are never checked twice.
 
 
-Advanced usage
+Advanced setup
 ==============
 
 Bypassing the framework
 -----------------------
-If you want to bypass the framework in a specific view class just explicitly set the `permission_classes` since we add our own `RolePermission` normally.
+If you want to bypass the framework in a specific view class just explicitly set the `permission_classes`.
 
 ```python
 class MyViewSet():
     permission_classes = [AllowAny]
 ```
 
-Even if you bypass the framework that way, you can still protect individual views
+Granting permission
+-------------------
 
-```python
-class MyViewSet():
-    permission_classes = [AllowAny]
-    view_permissions = {"list": {"admin": True}}
-```
-
-In this case `AllowAny` will be used for all views of the class, except `list` which will only allow admins.
-
-> You can always check `_view_permissions` on a class view instance to determine what permissions are in effect.
-
-
-Complex permission granting
----------------------------
-
-For more complex scenarios where you want to determine if a role should be granted access or not to the endpoint, you can use the helper functions `allof` or `anyof`.
+You can use the helper functions `allof` or `anyof` when deciding if a matched role should
+be granted access
 
 ```python
 from rest_framework_roles.granting import allof
@@ -141,11 +142,11 @@ class UserViewSet(ModelViewSet):
     }
 ```
 
-In this case the user can only update their information as long as they don't update their email.
+In the above example the user can only update their information only while not trying to update their email.
 
-> You can put all these functions inside a new file *granting.py* or just keep them close to the views, depending on what makes sense for your case. It's **important to not mix them with the roles** though to keeps things clean; a role identifies someone making the request. Granting determines if the person fitting tha role should be granted permission for their request. 
+> You can put all these functions inside a new file *granting.py* or just keep them close to the views, depending on what makes sense for your case. It's **important to not mix them with the roles** though to keeps things clean; (1) a role identifies someone making the request while (2) granting determines if the person fitting tha role should be granted permission for their request. 
 
-> Also keep in mind that someone can fit multiple roles. E.g. `admin` is also a user (unless you change the implementation of `is_user` and `is_admin`).
+> Keep in mind that someone can fit multiple roles. E.g. `admin` is also a user (unless you change the implementation of `is_user` and `is_admin`).
 
 
 Optimizing role checking
@@ -179,4 +180,4 @@ def is_creator(request, view):
 
 In this example, roles with cost 0 would be checked first, and lastly the *creator* role would be checked since it has the highest cost.
 
-> Note this is similar to Django REST's `check_permissions` and `check_object_permissions` but with much more room for refinement since you can have arbitrary number of costs.
+> Note this is similar to Django REST's `check_permissions` and `check_object_permissions` but more generic & adjustable since you can have arbitrary number of costs (instead of 2).
