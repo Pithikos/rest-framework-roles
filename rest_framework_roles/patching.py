@@ -76,6 +76,7 @@ def wrapped_handler(handler, handler_permissions):
 
 def wrapped_check_permissions(original_check_permissions):
     def wrapped(self, request):
+        handler = retrieve_handler(self, request)
 
         def is_explicitly_protected(self, request):
             """
@@ -87,7 +88,6 @@ def wrapped_check_permissions(original_check_permissions):
                     return True
             else:
                 # e.g. GenericAPIView
-                handler = retrieve_handler(self, request)
                 if handler.__name__ in self._view_permissions:
                     return True
                 else:
@@ -101,7 +101,10 @@ def wrapped_check_permissions(original_check_permissions):
         # This is since in that case, wrapped_handler will never fire and hence
         # neither will check_permissions. So we fallback to denying access for
         # these cases.
-        if not is_explicitly_protected(self, request):
+        if handler.__name__ == "http_method_not_allowed":
+            # Allow 405 to be returned
+            return
+        elif not is_explicitly_protected(self, request):
             logger.warning(f"{self.__class__.__name__}: Handler not specified explicitly in 'view_permissions'. Denying access")
             raise PermissionDenied('Permission denied for user.')
 
