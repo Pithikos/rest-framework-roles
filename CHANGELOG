@@ -1,3 +1,16 @@
+1.0.2
+=====
+
+- Fix so view instance passed instead of request handler function in role checkers
+
+
+1.0.1
+=====
+
+- Skip patching django.contrib modules by default
+- Add SKIP_MODULES setting
+
+
 1.0.0
 =====
 

@@ -156,7 +156,7 @@ def get_view_class(callback):
     return cls
 
 
-def patch(urlconf=None):
+def patch(urlconf=None, roleconfig=None):
     """
     Do the patching starting from the URLs
 
@@ -226,7 +226,7 @@ def patch(urlconf=None):
             raise Misconfigured(f"{cls.__name__}: You can't use both 'permission_classes' and 'view_permissions' in the same class")
         
         # Parse permissions for direct lookup
-        cls._view_permissions = parse_view_permissions(cls.view_permissions)
+        cls._view_permissions = parse_view_permissions(cls.view_permissions, roleconfig)
         
         # Wrap mentioned request handler in view_permissions.
         for handler_name, handler_permissions in cls._view_permissions.items():
