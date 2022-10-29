@@ -37,7 +37,19 @@ REST_FRAMEWORK_ROLES = {
 }
 ```
 
-Now all your endpoints default to *403 Forbidden* unless you specifically use `view_permissions` or DRF's `permission_classes` in view classes - one of the two, not both or you'll get an error. (Setting `permission_classes = [AllowAny]` on every individual class will emulate the default DRF behaviour.)
+Now all your endpoints default to *403 Forbidden* unless you specifically use `view_permissions` or DRF's `permission_classes` in view classes.
+
+By default endpoints from django.contrib won't be patched. This can be overriden with the setting SKIP_MODULES as seen below.
+
+``
+REST_FRAMEWORK_ROLES = {
+  'ROLES': 'myproject.roles.ROLES',
+  'SKIP_MODULES': [
+    'django.*',
+    'myproject.myapp55.*',
+  ],
+}
+```
 
 
 Setting permissions
@@ -120,6 +132,9 @@ If you want to bypass the framework in a specific view class just explicitly set
 class MyViewSet():
     permission_classes = [AllowAny]
 ```
+
+By default when you install DRF, every class gets automatically populated `permission_classes = [AllowAny]` which is really a bad idea. If for some reason you wish to get the same behaviour, you'd need to add `permission_classes = [AllowAny]` on every individual class.
+
 
 Granting permission
 -------------------

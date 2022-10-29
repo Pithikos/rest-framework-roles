@@ -1,6 +1,7 @@
 import sys
 import importlib
 import logging
+import fnmatch
 
 from django.urls import resolve, get_resolver
 from django.urls.resolvers import URLPattern
@@ -24,6 +25,12 @@ HTTP_VERBS = {
     'options',
     'trace',
 }
+
+
+DEFAULT_SKIP_MODULES = {
+    "django.*"
+}
+
 
 DENY_ALL_PERMISSION = [(True, False)]  # Evaluates role always to True and granted to False
 
@@ -173,6 +180,8 @@ def patch(urlconf=None):
     Args:
         urlconf(str): Path to urlconf, by default using ROOT_URLCONF
     """
+    from django.conf import settings
+    SKIP_MODULES = settings.REST_FRAMEWORK_ROLES.get("SKIP_MODULES", DEFAULT_SKIP_MODULES)
 
     # Patch DRF's default permission_classes
     from rest_framework.settings import api_settings  # noqa
@@ -186,6 +195,17 @@ def patch(urlconf=None):
     # Collect classes since multiple patterns might use the same view class
     collected_classes = set()
     for pattern in patterns:
+        
+        # Skip patching 3rd party entities (e.g. django.contrib.admin)
+        skip = False
+        for modpattern in SKIP_MODULES:
+            if fnmatch.filter([pattern.callback.__module__], modpattern):
+                logger.debug(f"Skip patching {pattern.callback}")
+                skip = True
+                break
+        if skip:
+            continue
+
         cls = get_view_class(pattern.callback)
         logger.debug(f'Collecting classes: {pattern} -> {cls}')
         collected_classes.add(cls)
