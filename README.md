@@ -39,9 +39,9 @@ REST_FRAMEWORK_ROLES = {
 
 Now all your endpoints default to *403 Forbidden* unless you specifically use `view_permissions` or DRF's `permission_classes` in view classes.
 
-By default endpoints from django.contrib won't be patched. This can be overriden with the setting SKIP_MODULES as seen below.
+By default endpoints from *django.contrib* won't be patched. If you wish to explicitly set what modules are skipped you can edit the SKIP_MODULES setting like below.
 
-``
+```python
 REST_FRAMEWORK_ROLES = {
   'ROLES': 'myproject.roles.ROLES',
   'SKIP_MODULES': [
