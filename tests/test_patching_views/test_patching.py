@@ -1,5 +1,6 @@
 from unittest import mock
 
+import pytest
 from django.http import HttpResponse
 from django.test import RequestFactory
 
@@ -9,11 +10,21 @@ from .test_patching_rest import urlpatterns as rest_urlpatterns
 from .test_patching_django import django_function_view_undecorated
 from .test_patching_django import urlpatterns as django_urlpatterns
 from rest_framework_roles.patching import is_callback_method, get_view_class
+from rest_framework_roles import patching
 
-# NOTE: Do not patch in this module. It will double-patch and give an error.
+
+from django.contrib import admin
+from django.urls import path, include
+
+from rest_framework import routers
 
 
-urlpatterns = rest_urlpatterns + django_urlpatterns
+third_party_urlpatterns = [
+    path("admin/", admin.site.urls),
+]
+
+
+urlpatterns = rest_urlpatterns + django_urlpatterns + third_party_urlpatterns
 
 def get_pattern(name):
     for pattern in urlpatterns:
@@ -38,3 +49,15 @@ def test_get_view_class():
 
     assert get_view_class(RestViewSet.as_view({'get': 'list'})) == RestViewSet
     assert get_view_class(RestViewSet.as_view({'get': 'custom_view'})) == RestViewSet
+
+
+@pytest.mark.urls(__name__)
+def test_not_interfere_with_third_party():
+    patching.patch()
+    urlconf = mock.MagicMock()
+    urlconf.urlpatterns = third_party_urlpatterns
+    patterns = patching.get_urlpatterns(urlconf)
+
+    # Ensure not patched
+    for pattern in patterns:
+        assert '_rfr_wrapped' not in pattern.callback.__qualname__
