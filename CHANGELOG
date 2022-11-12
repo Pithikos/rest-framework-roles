@@ -1,3 +1,9 @@
+1.0.3
+=====
+
+- Hotfix to not raise error when SKIP_MODULES setting used
+
+
 1.0.2
 =====
 
