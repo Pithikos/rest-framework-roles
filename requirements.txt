@@ -3,5 +3,6 @@ djangorestframework
 # Dev
 pytest
 pytest-django
-pytest-xdist  # required for sandboxing each test
+pytest-xdist
+pytest-forked  # required for sandboxing each test
 twine
