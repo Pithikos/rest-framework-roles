@@ -8,7 +8,7 @@ from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles import decorators
 
 
-VALID_SETTINGS = {"ROLES"}
+VALID_SETTINGS = {"ROLES", "SKIP_MODULES"}
 REQUIRED_SETTINGS = {"ROLES"}
 
 
