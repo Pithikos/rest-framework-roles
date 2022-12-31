@@ -97,8 +97,6 @@ from rest_framework_roles.granting import is_self
 class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-
-    # you can define permissions at the view level
     view_permissions = {
         'create': {'anon': True},  # only anonymous visitors allowed
         'list': {'admin': True}, 
