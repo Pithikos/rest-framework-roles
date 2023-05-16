@@ -119,7 +119,7 @@ def _rfr_wrapped_check_permissions(original_check_permissions):
             # Allow 405 to be returned
             return
         elif not is_explicitly_protected(self, request):
-            logger.warning(f"{self.__class__.__name__}: Handler not specified explicitly in 'view_permissions'. Denying access")
+            logger.warning(f"{self.__class__.__name__}: Handler '{handler.__name__}' fired but no explicit permission found in 'view_permissions' for this handler. Denying access")
             raise PermissionDenied('Permission denied for user.')
 
     return wrapped
