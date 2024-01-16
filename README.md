@@ -3,17 +3,19 @@ REST Framework Roles
 
 [![rest-framework-roles](https://circleci.com/gh/Pithikos/rest-framework-roles.svg?style=svg)](https://circleci.com/gh/Pithikos/rest-framework-roles) [![PyPI version](https://badge.fury.io/py/rest-framework-roles.svg)](https://badge.fury.io/py/rest-framework-roles)
 
-Role-based permissions for Django REST Framework.
+A security-centric framework aiming to decouple permissions from your models and views. 
 
-  - Least privileges by default.
-  - Human readable **declarative** view-based permissions.
-  - Switch between DRF's permission_classes and this easily.
-  - Protects you from accidentally exposing an endpoint on **view redirections**.
-  - Generic & flexible. You decide the where and how of your access logic and storage.
+The framework provides `view_permissions` as an alternative to `permission_classes`, which in our opinion makes things much more intuitive and also provides greater security by adding the permission checking between the views and the middleware of Django and captures edge-cases like redirections which overwise can expose unnoticed security holes.
 
-This works as a replacement for `permission_classes` on individual classes. This makes it easy to switch between this and the normal DRF behaviour depending on your needs.
+Features:
 
-Note that also `DEFAULT_PERMISSIONS_CLASSES` is patched so by default all endpoints will be denied access by simply installing this.
+  - Easy **declarative** permissions set on views.
+  - Least privilege by default.
+  - Guarding of view redirections, protecting you from accidentally exposing an endpoint.
+  - Backwards compativility with DRF's `permission_classes`.
+  - Decoupling and abstracting all permission logic away from your models and views.
+
+Note that `DEFAULT_PERMISSIONS_CLASSES` is patched so by default all endpoints will be denied access by simply installing this.
 
 
 Installation
