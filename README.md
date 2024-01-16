@@ -9,7 +9,7 @@ Features:
 
   - Role-based declarative permissions protecting views.
   - Least privilege by default.
-  - Re-use existing views with redirections, without worrying about security compromise.
+  - Re-use existing views with redirections, without security implications.
   - Backwards compativility with DRF's `permission_classes`.
   - Decoupling and abstracting all permission logic away from your models and views.
 
