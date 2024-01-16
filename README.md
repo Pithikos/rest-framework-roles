@@ -13,7 +13,7 @@ Features:
   - Backwards compativility with DRF's `permission_classes`.
   - Decoupling and abstracting all permission logic away from your models and views.
 
-The framework provides `view_permissions` as an alternative to `permission_classes`, which in our opinion makes things much more intuitive and also provides greater security by adding the permission checking between the views and the middleware of Django and captures edge-cases like redirections which overwise can expose unnoticed security holes.
+The framework provides `view_permissions` as an alternative to `permission_classes`, which in our opinion makes things much more intuitive and also provides greater security by adding the permission checking between the views and the middleware of Django. Effectively this allows to automatically capture edge-cases like redirections which overwise can expose unnoticed security holes. By using the least-privilege principle it also ensures that **by default any new API endpoint you create is secure**.
 
 Note that `DEFAULT_PERMISSIONS_CLASSES` is patched so by default all endpoints will be denied access by simply installing this.
 
