@@ -5,8 +5,6 @@ REST Framework Roles
 
 A security-centric framework aiming to decouple permissions from your models and views. 
 
-The framework provides `view_permissions` as an alternative to `permission_classes`, which in our opinion makes things much more intuitive and also provides greater security by adding the permission checking between the views and the middleware of Django and captures edge-cases like redirections which overwise can expose unnoticed security holes.
-
 Features:
 
   - Easy **declarative** permissions set on views.
@@ -14,6 +12,8 @@ Features:
   - Guarding of view redirections, protecting you from accidentally exposing an endpoint.
   - Backwards compativility with DRF's `permission_classes`.
   - Decoupling and abstracting all permission logic away from your models and views.
+
+The framework provides `view_permissions` as an alternative to `permission_classes`, which in our opinion makes things much more intuitive and also provides greater security by adding the permission checking between the views and the middleware of Django and captures edge-cases like redirections which overwise can expose unnoticed security holes.
 
 Note that `DEFAULT_PERMISSIONS_CLASSES` is patched so by default all endpoints will be denied access by simply installing this.
 
