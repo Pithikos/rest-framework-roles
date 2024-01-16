@@ -7,7 +7,7 @@ A security-centric framework aiming to decouple permissions from your models and
 
 Features:
 
-  - Easy role-based declarative permissions set on views.
+  - Role-based declarative permissions protecting views.
   - Least privilege by default.
   - Guarding of view redirections, protecting you from accidentally exposing an endpoint.
   - Backwards compativility with DRF's `permission_classes`.
