@@ -7,11 +7,11 @@ A security-centric framework aiming to decouple permissions from your models and
 
 Features:
 
-  - Role-based declarative permissions protecting views.
   - Least privilege by default.
-  - Re-use existing views with redirections, without security implications.
-  - Backwards compativility with DRF's `permission_classes`.
-  - Decoupling and abstracting all permission logic away from your models and views.
+  - Guard your application before a request reaches a view.
+  - Secure chained views (redirections), removing potential vulnerabilities.
+  - Backwards compatibility with DRF's `permission_classes`.
+  - Enforce decoupled and abstracted permission logic, away from models and views.
 
 The framework provides `view_permissions` as an alternative to `permission_classes`, which in our opinion makes things much more intuitive and also provides greater security by adding the permission checking between the views and the middleware of Django. By protecting the views, redirections can be used without creating securityholes, and by using the least-privilege principle **by default any new API endpoint you create is secure**.
 
