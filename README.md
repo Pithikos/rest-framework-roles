@@ -66,10 +66,10 @@ from rest_framework_roles.roles import is_user, is_anon, is_admin
 
 
 def is_buyer(request, view):
-    return is_user(request, view) and request.user.usertype = 'buyer'
+    return is_user(request, view) and request.user.usertype == 'buyer'
 
 def is_seller(request, view):
-    return is_user(request, view) and request.user.usertype = 'seller'
+    return is_user(request, view) and request.user.usertype == 'seller'
 
 
 ROLES = {
