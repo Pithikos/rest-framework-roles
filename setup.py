@@ -12,7 +12,7 @@ except ImportError:
     from distutils.command.install import install
 
 
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 
 
 def get_tag_version():
@@ -50,7 +50,7 @@ setup(
     author='Johan Hanssen Seferidis',
     author_email='manossef@gmail.com',
     packages=['rest_framework_roles'],
-    url='https://pypi.org/project/rest-framework-roles/',
+    url='https://github.com/Pithikos/rest-framework-roles',
     license='LICENSE',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
