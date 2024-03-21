@@ -115,7 +115,7 @@ class UserViewSet(ModelViewSet):
 By default everyone is denied access to everything. So we need to 'whitelist' any views
 we want to give permission explicitly.
 
-For redirections like `me` (which redirects to `retrieve`), we need to give the same permissions to both or else we'll get 403 Forbidden.
+For redirections like `me` (which redirects to `retrieve`), we need to whitelist both or else we'll get 403 Forbidden.
 
 > In a view you can always check `_view_permissions` to see what permissions are in effect.
 
@@ -127,14 +127,12 @@ Advanced setup
 
 Bypassing the framework
 -----------------------
-If you want to bypass the framework in a specific view class just explicitly set the `permission_classes`.
+To fallback to the default DRF behaviour simply add `permission_classes` to a class like below.
 
 ```python
 class MyViewSet():
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  # Default DRF (dangerous) behaviour
 ```
-
-By default when you install DRF, every class gets automatically populated `permission_classes = [AllowAny]` which is really a bad idea. If for some reason you wish to get the same behaviour, you'd need to add `permission_classes = [AllowAny]` on every individual class.
 
 
 Granting permission
