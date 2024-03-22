@@ -41,6 +41,7 @@ class RestAPIView(drf.views.APIView):  # This is the mother class of all classes
         return HttpResponse(_func_name())
 
     def view_patched_by_view_permissions(self, request):
+        """some docstring"""
         return HttpResponse(_func_name())
 
 
