@@ -92,22 +92,22 @@ def _rfr_wrap_check_permissions(original_check_permissions):
             """
             Determine if request handler is mentioned in view_permissions
             """
-            if hasattr(self, "action"):
-                # e.g. ModelViewSet, ViewSet
-                if self.action in self._view_permissions:
-                    return True
-            elif handler.__qualname__.endswith("._rfr_wrapped_handler"):
+
+            if handler.__name__ in self._view_permissions:
+                return True
+
+            if handler.__qualname__.endswith("._rfr_wrapped_handler"): # TRUE
                 # If we have wrapped the handler, it means that it was due
                 # to being explicitly mentioned in view_permissions
                 return True
-            else:
-                # e.g. GenericAPIView
-                if handler.__name__ in self._view_permissions:
+
+            if getattr(self, "action", None):
+                # e.g. ModelViewSet, ViewSet
+                if self.action in self._view_permissions:
                     return True
-                else:
-                    # This is a case where we can't determine the final handler at this point.
-                    # So for safety we return assuming there isn't one
-                    pass
+
+            # If we can't determine the final handler at this point.
+            # So for safety we return assuming there isn't one
             return False
 
         # Deny access when no corresponding handler found in view_permissions
