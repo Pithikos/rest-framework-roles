@@ -65,8 +65,8 @@ def retrieve_handler(self, request):
     return handler
 
 
-def _rfr_wrapped_handler(handler, handler_permissions):
-    def wrapped(self, request, *args, **kwargs):
+def _rfr_wrap_handler(handler, handler_permissions):
+    def _rfr_wrapped_handler(self, request, *args, **kwargs):
         """
         A wrapped view is the view that was explicitly mentioned in view_permissions,
         hence it shall ALWAYS check for permissions.
@@ -78,11 +78,11 @@ def _rfr_wrapped_handler(handler, handler_permissions):
 
         return handler(self, request, *args, **kwargs)
     
-    return wrapped
+    return _rfr_wrapped_handler
 
 
-def _rfr_wrapped_check_permissions(original_check_permissions):
-    def wrapped(self, request):
+def _rfr_wrap_check_permissions(original_check_permissions):
+    def _rfr_wrapped_check_permissions(self, request):
         """
         Bypass normal check_permissions behaviour when we use check_role_permissions
         """
@@ -90,13 +90,13 @@ def _rfr_wrapped_check_permissions(original_check_permissions):
 
         def is_explicitly_protected(self, request):
             """
-            Determine if view_permissions has an entry for corresponding request handler
-            """            
+            Determine if request handler is mentioned in view_permissions
+            """
             if hasattr(self, "action"):
                 # e.g. ModelViewSet, ViewSet
                 if self.action in self._view_permissions:
                     return True
-            elif handler.__qualname__.startswith("_rfr_wrapped_handler."):
+            elif handler.__qualname__.endswith("._rfr_wrapped_handler"):
                 # If we have wrapped the handler, it means that it was due
                 # to being explicitly mentioned in view_permissions
                 return True
@@ -112,7 +112,7 @@ def _rfr_wrapped_check_permissions(original_check_permissions):
 
         # Deny access when no corresponding handler found in view_permissions
         #
-        # This is since in that case, _rfr_wrapped_handler will never fire and hence
+        # This is since in that case, _rfr_wrap_handler will never fire and hence
         # neither will check_permissions. So we fallback to denying access for
         # these cases.
         if handler.__name__ == "http_method_not_allowed":
@@ -122,7 +122,7 @@ def _rfr_wrapped_check_permissions(original_check_permissions):
             logger.warning(f"{self.__class__.__name__}: Handler '{handler.__name__}' fired but no explicit permission found in 'view_permissions' for this handler. Denying access")
             raise PermissionDenied('Permission denied for user.')
 
-    return wrapped
+    return _rfr_wrapped_check_permissions
 
 
 # ------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ def patch(urlconf=None, roleconfig=None):
 
     Patched flow:
         1. dispatch()
-            2. _rfr_wrapped_handler()
+            2. _rfr_wrap_handler()
                 3. check_role_permissions()
                 4. handler()
                 5. finalize_response()
@@ -233,14 +233,14 @@ def patch(urlconf=None, roleconfig=None):
             if hasattr(cls, handler_name):
                 handler_permissions = cls._view_permissions[handler_name]
                 old_handler = getattr(cls, handler_name)
-                new_handler = _rfr_wrapped_handler(old_handler, handler_permissions)
+                new_handler = _rfr_wrap_handler(old_handler, handler_permissions)
                 setattr(cls, handler_name, new_handler)
             else:
                 raise Misconfigured(f"Unknown method '{handler_name}' found in {cls.__name__}.view_permissions")
 
         # Wrap DRF's check_permissions
         if hasattr(cls, "check_permissions"):
-            cls.check_permissions = _rfr_wrapped_check_permissions(cls.check_permissions)
+            cls.check_permissions = _rfr_wrap_check_permissions(cls.check_permissions)
 
     return patch_classes
 
