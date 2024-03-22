@@ -12,7 +12,7 @@ except ImportError:
     from distutils.command.install import install
 
 
-VERSION = '1.0.4'
+VERSION = '1.0.5'
 
 
 def get_tag_version():
