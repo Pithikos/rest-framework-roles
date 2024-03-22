@@ -156,3 +156,9 @@ def test_calling_unmixed_verb(db, rest_resolver, client):
     # Calling patch (which is not defined)
     response = client.patch('/list_model_mixin_anon_only/')
     assert response.status_code == 405
+    
+    
+@pytest.mark.urls(__name__)
+def test_patched_handler_docstring_preserved(db, rest_resolver, client):
+    view = RestAPIView()
+    assert "some docstring" in view.view_patched_by_view_permissions.__doc__

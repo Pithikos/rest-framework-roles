@@ -2,6 +2,7 @@ import sys
 import importlib
 import logging
 import fnmatch
+from functools import wraps
 
 from django.urls import resolve, get_resolver
 from django.urls.resolvers import URLPattern
@@ -66,6 +67,8 @@ def retrieve_handler(self, request):
 
 
 def _rfr_wrap_handler(handler, handler_permissions):
+
+    @wraps(handler)  # Preserve original function's metadata
     def _rfr_wrapped_handler(self, request, *args, **kwargs):
         """
         A wrapped view is the view that was explicitly mentioned in view_permissions,

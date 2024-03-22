@@ -1,3 +1,7 @@
+1.0.6
+=====
+- Fix so patched views preserve original view's metadata like docstrings
+
 1.0.5
 =====
 
