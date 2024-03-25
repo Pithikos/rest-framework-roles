@@ -3,7 +3,7 @@ REST Framework Roles
 
 [![rest-framework-roles](https://circleci.com/gh/Pithikos/rest-framework-roles.svg?style=svg)](https://circleci.com/gh/Pithikos/rest-framework-roles) [![PyPI version](https://badge.fury.io/py/rest-framework-roles.svg)](https://badge.fury.io/py/rest-framework-roles)
 
-A security-centric DRF plugin aimed at decoupling permissions from your models and views in an easy intuitive manner. **We believe views should hold business logic and not accessibility logic.**
+A security-centric DRF plugin aimed at decoupling permissions from your models and views in an easy intuitive manner. **We believe views should hold business logic, not accessibility logic.**
 
 Features:
 
