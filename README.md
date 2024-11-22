@@ -102,7 +102,7 @@ class UserViewSet(ModelViewSet):
         'create': {'anon': True},  # only anonymous visitors allowed
         'list': {'admin': True}, 
         'retrieve,me': {'user': is_self},
-        'update,update_partial': {'user': is_self, 'admin': True},
+        'update,partial_update': {'user': is_self, 'admin': True},
     }
 
     @action(detail=False, methods=['get'])
