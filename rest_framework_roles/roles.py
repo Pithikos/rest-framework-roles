@@ -14,4 +14,4 @@ def is_admin(request, view):
 
 
 def is_staff(request, view):
-    return request.user.is_staff or is_admin(request)
+    return request.user.is_staff
