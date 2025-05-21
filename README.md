@@ -52,25 +52,15 @@ REST_FRAMEWORK_ROLES = {
 ```
 
 
-Setting roles & permissions
+Specify roles
 ===========================
 
-
-It's time to define the roles for the application. Without any roles, `DEFAULT_EXCEPTION_CLASS` will always be raised.
+Create a file *roles.py* in your project to hold the defined roles in your application. Below we use the defactor Django roles and also add a few new ones for demonstration.
 
 
 *roles.py*
 ```python
-from rest_framework.exceptions import NotAuthenticated
 from rest_framework_roles.roles import is_anon, is_user, is_admin, is_staff
-
-def is_user_or_401(request, view):
-    # For private APIs we typically use a 'user' role in view_permission, 
-    # so this effectivelly allows us to raise 401 on private endpoints
-    # instead of 404 or 403 for unauthenticated users.
-    if request.user.is_anonymous:
-        raise NotAuthenticated()
-    return is_user(request, view)
 
 def is_buyer(request, view):
     return is_user(request, view) and request.user.usertype = 'buyer'
@@ -80,10 +70,9 @@ def is_seller(request, view):
 
 
 ROLES = {
-
     # Django vanilla roles
     'anon': is_anon,
-    'user': is_user_or_401,
+    'user': is_user,
     'admin': is_admin,
     'staff': is_staff,
 
@@ -93,13 +82,19 @@ ROLES = {
 }
 ```
 
-Role checkers are meant to determine if a request fits a specific role. They all take a `request` and `view` as parameters, similar to [DRF's behaviour](https://www.django-rest-framework.org/api-guide/permissions/). You can see the source [here](https://github.com/Pithikos/rest-framework-roles/blob/master/rest_framework_roles/roles.py).
+We call `is_buyer` and `is_seller` role checkers and their sole purpose is to determine if a request matches a specific role. They all take a `request` and `view` as parameters, similar to [DRF's behaviour](https://www.django-rest-framework.org/api-guide/permissions/). You can find the source for the provided shortcuts [here](https://github.com/Pithikos/rest-framework-roles/blob/master/rest_framework_roles/roles.py).
 
-Next we need to define permissions for the views with `view_permissions`.
+
+Specify view permissions
+===========================
+
+Once roles are defined, they can be used directly in `view_permissions`.
+
+The example below demonstrates a typical behaviour one might want for a user management endpoint, mixing private and public actions. Furthermore it shows how we can return ad-hoc exceptions for certain actions.
 
 *views.py*
 ```python
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from rest_framework_roles.granting import is_self
@@ -109,10 +104,30 @@ class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
     view_permissions = {
-        'create': {'anon': True, 'user': PermissionDenied},
-        'list': {'admin': True}, 
-        'retrieve,me': {'user': is_self},
-        'update,update_partial': {'user': is_self, 'admin': True},
+
+        # Only anonymous requests can create users
+        'create': {
+            'anon': True,              #  OK for anonymous requests
+            'user': PermissionDenied,  # 403 for logged-in users
+        },
+
+        # Only admins can list users
+        'list': {
+            'admin': True,             # admin can list all users
+            'user': PermissionDenied,  # 403 for logged-in users who are not admins
+            'anon': NotAuthenticated,  # 401 for anonymous requests
+        },
+        
+        # Any user can retrieve themselves
+        'retrieve,me': {
+            'user': is_self,           # 404 fallback for anonymous requests
+        },
+
+        # Only admins can update users or users themselves
+        'update,update_partial': {
+            'user': is_self,           # OK for themselves
+            'admin': True,             # OK for admins
+        },
     }
 
     @action(detail=False, methods=['get'])
@@ -120,17 +135,6 @@ class UserViewSet(ModelViewSet):
         self.kwargs['pk'] = request.user.pk
         return self.retrieve(request)
 ```
-
-In this scenario we have a mix of public (create) and private (list, retrieve, update) actions for a specific resource.
-
-What these permissions mean:
-  
-  - Anonymous users can create a user (e.g. signup).
-  - A logged-in user will directly get 403 Forbidden if they try to create a user.
-  - Only admins can list users.
-  - A logged-in user can retrieve their own information by `/users/<user_id>/` or `/users/me/`.
-  - Similarly a logged-in user can update their own information.
-  - An admin can update any user.
 
 > Redirections (e.g. `me`) are supported by the framework but you still need to explicitly state the views involved. Redirections have minimal performance impact.
 
