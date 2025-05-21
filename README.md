@@ -14,7 +14,6 @@ Features:
 
 The framework provides `view_permissions` as an alternative to DRF's `permission_classes`, with the aim to move permission logic away from views and models so that views can focus on the business logic.
 
-
 Installation
 ============
 
@@ -63,10 +62,10 @@ Create a file *roles.py* in your project to hold the defined roles in your appli
 from rest_framework_roles.roles import is_anon, is_user, is_admin, is_staff
 
 def is_buyer(request, view):
-    return is_user(request, view) and request.user.usertype = 'buyer'
+    return is_user(request, view) and request.user.usertype == 'buyer'
 
 def is_seller(request, view):
-    return is_user(request, view) and request.user.usertype = 'seller'
+    return is_user(request, view) and request.user.usertype == 'seller'
 
 
 ROLES = {

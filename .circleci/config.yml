@@ -37,8 +37,8 @@ jobs:
           name: setup pypi credentials
           command: |
             echo -e "[pypi]" >> ~/.pypirc
-            echo -e "username = Pithikos" >> ~/.pypirc
-            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+            echo -e "username = __token__" >> ~/.pypirc
+            echo -e "password = $PYPI_TOKEN" >> ~/.pypirc
       - run:
           name: upload to cheeseshop if a tag found
           command: |
