@@ -27,7 +27,7 @@ class DenyAll(BasePermission):
         return False
 
 
-def bool_role(request, view, role_checker):
+def matches_role(request, view, role_checker):
     """ Checks if role evaluates to true """
     if hasattr(role_checker, '__call__'):
         return role_checker(request, view)
@@ -43,7 +43,7 @@ def _check_role_permissions(request, view, view_instance, view_permissions):
 
         # Match any role
         for role in roles:
-            if bool_role(request, view_instance, role):
+            if matches_role(request, view_instance, role):
 
                 role_name = role.__qualname__ if hasattr(role, '__qualname__') else role
                 logger.debug(f"check_role_permissions:{view.__name__}:{role_name}:{granted}")
