@@ -7,10 +7,23 @@ from django.conf import settings
 from rest_framework_roles.roles import is_admin, is_user, is_anon
 
 
+def is_test_user1(request, view):
+    return request.user.username == 'test_user1'
+
+def is_test_user2(request, view):
+    return request.user.username == 'test_user2'
+
+def is_test_user3(request, view):
+    return request.user.username == 'test_user3'
+
+
 ROLES = {
     'admin': is_admin,
     'user': is_user,
     'anon': is_anon,
+    'test_user1': is_test_user1,
+    'test_user2': is_test_user2,
+    'test_user3': is_test_user3,
 }
 VIEW_PERMISSIONS = []
 REST_FRAMEWORK_ROLES = {

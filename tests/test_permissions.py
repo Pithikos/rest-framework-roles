@@ -26,14 +26,6 @@ import rest_framework as drf
 from django.urls import path, include
 
 
-ROLES = {
-    'admin': is_admin,
-    'user': is_user,
-    'anon': is_anon,
-}
-settings.REST_FRAMEWORK_ROLES['ROLES'] = f"{__name__}.ROLES"
-
-
 def not_updating_email(request, view):
     return 'email' not in request.data
 

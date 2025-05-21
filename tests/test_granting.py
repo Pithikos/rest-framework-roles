@@ -1,16 +1,10 @@
-import importlib
-
 import pytest
-from django.urls import get_resolver, set_urlconf
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.http import HttpResponse
 
-from rest_framework_roles.exceptions import Misconfigured
-from rest_framework_roles.roles import is_admin, is_user, is_anon
 from rest_framework_roles.granting import is_self, anyof, allof
 from rest_framework_roles import patching
-from .fixtures import admin, user, anon
+from .fixtures import anon, user, admin, test_user1, test_user2, test_user3
 from .utils import assert_allowed, assert_disallowed, UserSerializer
 
 
@@ -20,17 +14,8 @@ from .utils import assert_allowed, assert_disallowed, UserSerializer
 import rest_framework.routers
 import rest_framework.permissions
 import rest_framework.viewsets
-import rest_framework.decorators
 import rest_framework as drf
 from django.urls import path, include
-
-
-ROLES = {
-    'admin': is_admin,
-    'user': is_user,
-    'anon': is_anon,
-}
-settings.REST_FRAMEWORK_ROLES['ROLES'] = f"{__name__}.ROLES"
 
 
 class UserViewSet(drf.viewsets.ModelViewSet):
@@ -39,8 +24,9 @@ class UserViewSet(drf.viewsets.ModelViewSet):
 
     view_permissions = {
         'list': {
-            'user': anyof(False, True),
-            'admin': allof(True, True),
+            'test_user1': anyof(False, True),
+            'test_user2': allof(True, True),
+            'test_user3': drf.exceptions.NotFound,
         }
     }
 
@@ -58,6 +44,13 @@ class TestUserAPI():
     def setup(self):
         patching.patch()
 
-    def test_all_can_list(self, user, anon, admin):
-        assert_allowed(user, get='/users/')
-        assert_allowed(admin, get='/users/')
+    def test_anyof(self, test_user1):
+        assert_allowed(test_user1, get='/users/')
+        
+    def test_allof(self, test_user2):
+        assert_allowed(test_user2, get='/users/')
+
+    def test_explicit_exception(self, test_user3, client):
+        client.force_authenticate(user=test_user3)
+        resp = client.get('/users/')
+        assert resp.status_code == 404

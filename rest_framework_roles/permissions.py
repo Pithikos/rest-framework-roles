@@ -4,30 +4,20 @@ Permissions are checked mainly by checking if a _view_permissions exist for give
 
 import logging
 
-from django.core.exceptions import PermissionDenied
-from rest_framework.permissions import BasePermission
-
 from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.granting import GrantChecker, bool_granted, TYPE_FUNCTION
 from rest_framework_roles import exceptions
 from rest_framework_roles import patching
-
 
 MAX_VIEW_REDIRECTION_DEPTH = 3  # Disallow too much depth since it can potentially become expensive
 
 PERMISSIONS_GRANTED_ATTR = "_rfr_permissions_granted"
 VIEWS_CHECKED_ATTR = "_rfr_views_checked"
 
-
 logger = logging.getLogger(__name__)
 
 
-class DenyAll(BasePermission):
-    def has_permission(self, request, view):
-        return False
-
-
-def bool_role(request, view, role_checker):
+def matches_role(request, view, role_checker):
     """ Checks if role evaluates to true """
     if hasattr(role_checker, '__call__'):
         return role_checker(request, view)
@@ -39,13 +29,13 @@ def bool_role(request, view, role_checker):
 def _check_role_permissions(request, view, view_instance, view_permissions):
 
     for permissions in view_permissions:
-        granted, roles = permissions[0], permissions[1:]
+        granted, role_checkers = permissions[0], permissions[1:]
 
         # Match any role
-        for role in roles:
-            if bool_role(request, view_instance, role):
+        for role_checker in role_checkers:
+            if matches_role(request, view_instance, role_checker):
 
-                role_name = role.__qualname__ if hasattr(role, '__qualname__') else role
+                role_name = role_checker.__qualname__ if hasattr(role_checker, '__qualname__') else role_checker
                 logger.debug(f"check_role_permissions:{view.__name__}:{role_name}:{granted}")
 
                 # Check permission is granted:
@@ -59,6 +49,8 @@ def _check_role_permissions(request, view, view_instance, view_permissions):
                     granted = bool_granted(request, view, granted, view_instance)
                 elif type(granted) is GrantChecker:
                     granted = granted.evaluate(request, view, view_instance)
+                elif issubclass(granted, Exception):
+                    raise granted
                 else:
                     raise Misconfigured("From v0.4.0+ you need to use 'anyof', 'allof' or similar for multiple grant checks")
 
