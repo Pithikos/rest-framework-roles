@@ -10,6 +10,7 @@ from django.conf import settings
 from django.utils.functional import empty
 from django.core.exceptions import PermissionDenied
 from django.utils.module_loading import import_string
+from rest_framework.permissions import BasePermission
 
 from rest_framework_roles import permissions
 from rest_framework_roles.parsing import parse_view_permissions
@@ -35,6 +36,11 @@ DEFAULT_SKIP_MODULES = {
 
 
 DEFAULT_EXCEPTION_CLASS = "rest_framework.exceptions.PermissionDenied"
+
+
+class DefaultPermission(BasePermission):
+    def has_permission(self, request, view):
+        raise DEFAULT_EXCEPTION_CLASS
 
 
 def is_django_configured():
@@ -206,7 +212,7 @@ def patch(urlconf=None, roleconfig=None):
 
     # Patch DRF's default permission_classes
     from rest_framework.settings import api_settings  # noqa
-    api_settings.DEFAULT_PERMISSION_CLASSES = [permissions.DenyAll]
+    api_settings.DEFAULT_PERMISSION_CLASSES = [DefaultPermission]
 
     patterns = get_urlpatterns(urlconf)
 

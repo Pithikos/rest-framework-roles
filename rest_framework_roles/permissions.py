@@ -4,27 +4,17 @@ Permissions are checked mainly by checking if a _view_permissions exist for give
 
 import logging
 
-from django.core.exceptions import PermissionDenied
-from rest_framework.permissions import BasePermission
-
 from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.granting import GrantChecker, bool_granted, TYPE_FUNCTION
 from rest_framework_roles import exceptions
 from rest_framework_roles import patching
-
 
 MAX_VIEW_REDIRECTION_DEPTH = 3  # Disallow too much depth since it can potentially become expensive
 
 PERMISSIONS_GRANTED_ATTR = "_rfr_permissions_granted"
 VIEWS_CHECKED_ATTR = "_rfr_views_checked"
 
-
 logger = logging.getLogger(__name__)
-
-
-class DenyAll(BasePermission):
-    def has_permission(self, request, view):
-        return False
 
 
 def matches_role(request, view, role_checker):
