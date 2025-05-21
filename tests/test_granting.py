@@ -15,17 +15,8 @@ from .utils import assert_allowed, assert_disallowed, UserSerializer
 import rest_framework.routers
 import rest_framework.permissions
 import rest_framework.viewsets
-import rest_framework.decorators
 import rest_framework as drf
 from django.urls import path, include
-
-
-ROLES = {
-    'admin': is_admin,
-    'user': is_user,
-    'anon': is_anon,
-}
-settings.REST_FRAMEWORK_ROLES['ROLES'] = f"{__name__}.ROLES"
 
 
 class UserViewSet(drf.viewsets.ModelViewSet):
