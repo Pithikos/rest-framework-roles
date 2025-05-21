@@ -39,13 +39,13 @@ def matches_role(request, view, role_checker):
 def _check_role_permissions(request, view, view_instance, view_permissions):
 
     for permissions in view_permissions:
-        granted, roles = permissions[0], permissions[1:]
+        granted, role_checkers = permissions[0], permissions[1:]
 
         # Match any role
-        for role in roles:
-            if matches_role(request, view_instance, role):
+        for role_checker in role_checkers:
+            if matches_role(request, view_instance, role_checker):
 
-                role_name = role.__qualname__ if hasattr(role, '__qualname__') else role
+                role_name = role_checker.__qualname__ if hasattr(role_checker, '__qualname__') else role_checker
                 logger.debug(f"check_role_permissions:{view.__name__}:{role_name}:{granted}")
 
                 # Check permission is granted:
