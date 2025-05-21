@@ -22,13 +22,6 @@ def admin(db):
         is_staff=True,
         is_superuser=True,
     )
-    
-    
-@fixture
-def test_user(db):
-    return User.objects.create(
-        username='test_user',
-    )
 
 
 @fixture(scope='function')
