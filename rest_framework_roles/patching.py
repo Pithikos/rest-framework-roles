@@ -9,6 +9,7 @@ from django.urls.resolvers import URLPattern
 from django.conf import settings
 from django.utils.functional import empty
 from django.core.exceptions import PermissionDenied
+from django.utils.module_loading import import_string
 
 from rest_framework_roles import permissions
 from rest_framework_roles.parsing import parse_view_permissions
@@ -31,6 +32,9 @@ HTTP_VERBS = {
 DEFAULT_SKIP_MODULES = {
     "django.*"
 }
+
+
+DEFAULT_EXCEPTION_CLASS = "rest_framework.exceptions.PermissionDenied"
 
 
 def is_django_configured():
@@ -74,7 +78,7 @@ def _rfr_wrap_handler(handler, handler_permissions):
 
         granted = permissions.check_role_permissions(request, handler, self, handler_permissions)
         if not granted:
-            raise PermissionDenied('Permission denied for user.')
+            raise DEFAULT_EXCEPTION_CLASS
 
         return handler(self, request, *args, **kwargs)
     
@@ -120,7 +124,7 @@ def _rfr_wrap_check_permissions(original_check_permissions):
             return
         elif not is_explicitly_protected(self, request):
             logger.warning(f"{self.__class__.__name__}: Handler '{handler.__name__}' fired but no explicit permission found in 'view_permissions' for this handler. Denying access")
-            raise PermissionDenied('Permission denied for user.')
+            raise DEFAULT_EXCEPTION_CLASS
 
     return _rfr_wrapped_check_permissions
 
@@ -154,6 +158,23 @@ def get_view_class(callback):
     mod = importlib.import_module(callback.__module__)
     cls = getattr(mod, callback.__name__)
     return cls
+
+
+def post_patch():
+
+    # Parse DEFAULT_EXCEPTION_CLASS
+    global DEFAULT_EXCEPTION_CLASS
+    from django.conf import settings
+    DEFAULT_EXCEPTION_CLASS = settings.REST_FRAMEWORK_ROLES.get("DEFAULT_EXCEPTION_CLASS", DEFAULT_EXCEPTION_CLASS)
+    if not isinstance(DEFAULT_EXCEPTION_CLASS, str):
+        raise Misconfigured("DEFAULT_EXCEPTION_CLASS must be a string")
+    try:
+        exc_class = import_string(DEFAULT_EXCEPTION_CLASS)
+    except ImportError as e:
+        raise Misconfigured(f"DEFAULT_EXCEPTION_CLASS contains invalid 'NOT_GRANTED_EXCEPTION': {e}")
+    if not issubclass(exc_class, Exception):
+        raise Misconfigured(f"DEFAULT_EXCEPTION_CLASS contains invalid 'NOT_GRANTED_EXCEPTION': {exc_class} is not a subclass of Exception")
+    DEFAULT_EXCEPTION_CLASS = exc_class
 
 
 def patch(urlconf=None, roleconfig=None):
@@ -242,6 +263,7 @@ def patch(urlconf=None, roleconfig=None):
         if hasattr(cls, "check_permissions"):
             cls.check_permissions = _rfr_wrap_check_permissions(cls.check_permissions)
 
+    post_patch()
     return patch_classes
 
 
