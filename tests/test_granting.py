@@ -1,12 +1,7 @@
-import importlib
-
 import pytest
-from django.urls import get_resolver, set_urlconf
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.http import HttpResponse
 
-from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.roles import is_admin, is_user, is_anon
 from rest_framework_roles.granting import is_self, anyof, allof
 from rest_framework_roles import patching
@@ -58,6 +53,8 @@ class TestUserAPI():
     def setup(self):
         patching.patch()
 
-    def test_all_can_list(self, user, anon, admin):
+    def test_anyof(self, user, anon, admin):
         assert_allowed(user, get='/users/')
+        
+    def test_allof(self, user, anon, admin):
         assert_allowed(admin, get='/users/')
