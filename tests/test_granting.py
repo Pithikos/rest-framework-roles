@@ -26,6 +26,7 @@ class UserViewSet(drf.viewsets.ModelViewSet):
         'list': {
             'test_user1': anyof(False, True),
             'test_user2': allof(True, True),
+            'test_user3': drf.exceptions.NotFound,
         }
     }
 
@@ -48,3 +49,8 @@ class TestUserAPI():
         
     def test_allof(self, test_user2):
         assert_allowed(test_user2, get='/users/')
+
+    def test_explicit_exception(self, test_user3, client):
+        client.force_authenticate(user=test_user3)
+        resp = client.get('/users/')
+        assert resp.status_code == 404

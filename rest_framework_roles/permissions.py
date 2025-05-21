@@ -59,6 +59,8 @@ def _check_role_permissions(request, view, view_instance, view_permissions):
                     granted = bool_granted(request, view, granted, view_instance)
                 elif type(granted) is GrantChecker:
                     granted = granted.evaluate(request, view, view_instance)
+                elif issubclass(granted, Exception):
+                    raise granted
                 else:
                     raise Misconfigured("From v0.4.0+ you need to use 'anyof', 'allof' or similar for multiple grant checks")
 
