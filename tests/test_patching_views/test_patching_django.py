@@ -56,9 +56,11 @@ def test_patching_instance_views(django_resolver, client):
     assert not is_preview_patched(cls.view_unpatched)
 
     # Ensure check_role_permissions called
-    with patch('rest_framework_roles.permissions.check_role_permissions') as check_role_permissions:
-        resp = client.get('/django_class_view')
-        assert resp.status_code != 404
-        assert check_role_permissions.called
+    from rest_framework_roles.patching import DEFAULT_EXCEPTION_CLASS
+    from rest_framework_roles.permissions import check_role_permissions as original
+    with patch('rest_framework_roles.permissions.check_role_permissions', wraps=original) as mocked_check_role_permissions:
+        with pytest.raises(DEFAULT_EXCEPTION_CLASS):
+            resp = client.get('/django_class_view')
+            assert mocked_check_role_permissions.called
 
     # TODO: Test to ensure instance view is patched to allow redirections between views

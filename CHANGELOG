@@ -1,3 +1,8 @@
+1.1.0
+=====
+- Add setting `REST_FRAMEWORK_ROLES.DEFAULT_EXCEPTION_CLASS`
+- Allow setting exceptions in `view_permissions` per role for adhoc behaviour
+
 1.0.6
 =====
 - Fix so patched views preserve original view's metadata like docstrings
