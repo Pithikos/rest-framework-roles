@@ -33,9 +33,6 @@ DEFAULT_SKIP_MODULES = {
 }
 
 
-DENY_ALL_PERMISSION = [(True, False)]  # Evaluates role always to True and granted to False
-
-
 def is_django_configured():
     return settings._wrapped is not empty
 
