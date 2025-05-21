@@ -4,6 +4,11 @@ from django.contrib.auth.models import User, AnonymousUser
 
 
 @fixture
+def client():
+    from rest_framework.test import APIClient
+    return APIClient()
+
+@fixture
 def anon(db):
     return AnonymousUser()
 
