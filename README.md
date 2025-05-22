@@ -51,10 +51,10 @@ REST_FRAMEWORK_ROLES = {
 ```
 
 
-Specify roles
+Roles example
 ===========================
 
-Create a file *roles.py* in your project to hold the defined roles in your application. Below we use the defactor Django roles and also add a few new ones for demonstration.
+Create a file *roles.py* in your project to hold the defined roles in your application. Below we use the defacto Django roles and also add a few new ones for demonstration purposes.
 
 
 *roles.py*
@@ -81,15 +81,15 @@ ROLES = {
 }
 ```
 
-We call `is_buyer` and `is_seller` role checkers and their sole purpose is to determine if a request matches a specific role. They all take a `request` and `view` as parameters, similar to [DRF's behaviour](https://www.django-rest-framework.org/api-guide/permissions/). You can find the source for the provided shortcuts [here](https://github.com/Pithikos/rest-framework-roles/blob/master/rest_framework_roles/roles.py).
+Every role needs to have a role checker function returning `True` or `False`. Role checkers take a `request` and `view` as parameters, similar to [DRF's behaviour](https://www.django-rest-framework.org/api-guide/permissions/). Some simple ones for Django's default roles are already included - you can see the [source code here](https://github.com/Pithikos/rest-framework-roles/blob/master/rest_framework_roles/roles.py).
 
 
-Specify view permissions
+View example
 ===========================
 
 Once roles are defined, they can be used directly in `view_permissions`.
 
-The example below demonstrates a typical behaviour one might want for a user management endpoint, mixing private and public actions. Furthermore it shows how we can return ad-hoc exceptions for certain actions.
+A real-life `/users/` endpoint could look like below.
 
 *views.py*
 ```python
@@ -101,43 +101,38 @@ from rest_framework_roles.granting import is_self
 
 class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
-    queryset = User.objects.all()
+    queryset = User.objects.filter(is_archived=False)
     view_permissions = {
-
-        # Only anonymous requests can create users
-        'create': {
-            'anon': True,              #  OK for anonymous requests
-            'user': PermissionDenied,  # 403 for logged-in users
-        },
-
-        # Only admins can list users
-        'list': {
-            'admin': True,             # admin can list all users
-            'user': PermissionDenied,  # 403 for logged-in users who are not admins
-            'anon': NotAuthenticated,  # 401 for anonymous requests
-        },
-        
-        # Any user can retrieve themselves
-        'retrieve,me': {
-            'user': is_self,           # 404 fallback for anonymous requests
-        },
-
-        # Only admins can update users or users themselves
-        'update,update_partial': {
-            'user': is_self,           # OK for themselves
-            'admin': True,             # OK for admins
-        },
+        'destroy,retrieve,update,partial_update': {'user': is_self, 'admin': True},  # 1
+        'create': {'anon': True, 'user': PermissionDenied},  # 2
+        'list': {'admin': True, 'anon': NotAuthenticated},   # 3
+        'me': {'user': True, 'anon': NotAuthenticated},      # 4
     }
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['GET', 'PATCH', 'DELETE'])
     def me(self, request):
         self.kwargs['pk'] = request.user.pk
-        return self.retrieve(request)
+        if request.method == 'PATCH':
+            return self.partial_update(request)
+        elif request.method == 'GET':
+            return self.retrieve(request)
+        elif request.method == 'DELETE':
+            return self.destroy(request)
+        raise NotImplementedError
 ```
 
-> Redirections (e.g. `me`) are supported by the framework but you still need to explicitly state the views involved. Redirections have minimal performance impact.
+Since we've set `DEFAULT_EXCEPTION_CLASS` to *404 Not Found*, we only need to care about cases where we want something different.
 
-> Note that the checking is **greedy**. If a request matches multiple roles, it will go through all of the roles until it reaches one that is granted access. This allows flexibility in case you have several overlapping roles (e.g. admin is also a user and staff).
+Explanation:
+
+1. Any endpoints of the pattern `GET /users/<id>/` need to be hidden to avoid giving hints of existing users to attackers. We use `is_self` which simply checks if `request.user == view.get_object()`. Unauthorized access will fallback to 404 (and hence hiding the existence of a specific user).
+2. `POST /users/` is a public endpoint. However we want to avoid logged-in users creating second accounts so 403 is returned.
+3. `GET /users/` should only be accessible to admin. 404 is not required since there's not any special information, so a simple 401 is more informative to requests.
+4. `GET /users/me/` is a redirection to `GET /users/<id>/`. We know the latter already uses `is_self` which is correct. However for a better experience we return a 401 for anonymous requests here instead of the default 404.
+
+> Redirections are supported and have minimal performance impact. You still need to explicitly state access to them in `view_permissions` or you'll get the exception from `DEFAULT_EXCEPTION_CLASS`.
+
+> The granting algorithm is **greedy**. If a request matches multiple roles, it will go through all of the roles until it reaches one that grants it access. This allows flexibility in case you have several overlapping roles (e.g. admin is also a user and staff).
 
 > In a view you can always check `_view_permissions` to see what permissions are in effect.
 
