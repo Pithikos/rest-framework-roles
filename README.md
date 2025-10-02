@@ -3,7 +3,7 @@ REST Framework Roles
 
 [![rest-framework-roles](https://circleci.com/gh/Pithikos/rest-framework-roles.svg?style=svg)](https://circleci.com/gh/Pithikos/rest-framework-roles) [![PyPI version](https://badge.fury.io/py/rest-framework-roles.svg)](https://badge.fury.io/py/rest-framework-roles)
 
-A Django REST Framework security-centric plugin aimed at decoupling permissions from your models and views.
+Decouple security and permissions from your models and views with this plugin.
 
 Features:
 
