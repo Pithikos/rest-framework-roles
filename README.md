@@ -3,7 +3,7 @@ REST Framework Roles
 
 [![rest-framework-roles](https://circleci.com/gh/Pithikos/rest-framework-roles.svg?style=svg)](https://circleci.com/gh/Pithikos/rest-framework-roles) [![PyPI version](https://badge.fury.io/py/rest-framework-roles.svg)](https://badge.fury.io/py/rest-framework-roles)
 
-Decouple security and permissions from your models and views with this plugin.
+Are you tired of permission permission logic being scattered across your models and views? Then this plugin is for you.
 
 Features:
 
