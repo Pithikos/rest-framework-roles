@@ -7,6 +7,7 @@ Are you tired of permission logic being scattered across your models and views? 
 
 Features:
 
+  - Declarative role-based permissions.
   - Least privilege by default.
   - Guard your API **before** a request reaches a view.
   - Redirections are guarded automatically.
