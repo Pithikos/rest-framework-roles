@@ -2,7 +2,7 @@ Django==4.2.30
 djangorestframework==3.14.0
 
 # Dev
-pytest==7.2.0
+pytest==9.0.3
 pytest-django==4.5.2
 pytest-forked==1.4.0
 pytest-xdist==3.0.2  # required for sandboxing each test
