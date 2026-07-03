@@ -1,3 +1,7 @@
+1.2.0 (pre-release)
+=====
+- patch() is now idempotent
+
 1.1.0
 =====
 - Add setting `REST_FRAMEWORK_ROLES.DEFAULT_EXCEPTION_CLASS`
