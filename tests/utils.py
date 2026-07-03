@@ -44,8 +44,9 @@ def assert_disallowed(user, get=None, post=None, patch=None, data=None, expected
         raise AssertionError(f"'{user}' should not be allowed. Got {response.status_code} - '{response.content.decode()}'")
 
 
-def is_preview_patched(fn):
-    return 'wrapped_view' in str(fn)
+def is_patched(fn):
+    """Check if handler has been patched"""
+    return getattr(fn, '_rfr_wrapped', False)
 
 
 def has_view_permissions(fn):
