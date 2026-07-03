@@ -318,10 +318,12 @@ class TestViewRedirection():
 
 @pytest.mark.urls(__name__)
 class TestWithCustomPermissionClassesAndViewPermissions:
-    def test_raises_misconfiguration(self):
+    def test_raises_misconfiguration(self, monkeypatch):
         """We don't allow both"""
         assert UserViewSet.view_permissions  # preassumption
-        UserViewSet.permission_classes = [drf.permissions.AllowAny]
+        # monkeypatch restores the original attribute after the test, so this
+        # deliberate misconfiguration doesn't leak into other tests.
+        monkeypatch.setattr(UserViewSet, 'permission_classes', [drf.permissions.AllowAny])
         with pytest.raises(Misconfigured):
             patching.patch()
 

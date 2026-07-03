@@ -3,14 +3,16 @@ from unittest import mock
 import pytest
 from django.http import HttpResponse
 from django.test import RequestFactory
+from django.contrib.auth.models import User, AnonymousUser
 
 from .test_patching_django import DjangoView
-from .test_patching_rest import RestAPIView, RestViewSet, rest_function_view_undecorated
+from .test_patching_rest import RestAPIView, RestViewSet, RestClassModel, rest_function_view_undecorated
 from .test_patching_rest import urlpatterns as rest_urlpatterns
 from .test_patching_django import django_function_view_undecorated
 from .test_patching_django import urlpatterns as django_urlpatterns
 from rest_framework_roles.patching import is_callback_method, get_view_class
 from rest_framework_roles import patching
+from ..utils import assert_allowed, assert_disallowed
 
 
 from django.contrib import admin
@@ -61,3 +63,40 @@ def test_not_interfere_with_third_party():
     # Ensure not patched
     for pattern in patterns:
         assert '_rfr_wrapped' not in pattern.callback.__qualname__
+
+
+@pytest.mark.urls(__name__)
+class TestPatchIsIdempotent:
+    """
+    Regression tests: calling patch() more than once in the same process must be
+    safe. Previously post_patch() resolved DEFAULT_EXCEPTION_CLASS from its own
+    (already-resolved) output, so the 2nd call raised Misconfigured, and handlers
+    got wrapped on top of wrappers (which could trip MAX_VIEW_REDIRECTION_DEPTH).
+    """
+
+    def test_calling_patch_twice_does_not_raise(self):
+        patching.patch()
+        patching.patch()  # used to raise Misconfigured("...must be a string")
+
+    def test_exception_class_stays_a_resolved_exception(self):
+        patching.patch()
+        patching.patch()
+        exc = patching.DEFAULT_EXCEPTION_CLASS
+        assert isinstance(exc, type) and issubclass(exc, Exception), \
+            f"Expected a resolved exception class, got {exc!r}"
+
+    def test_handlers_are_not_re_wrapped(self):
+        patching.patch()
+        wrapped_once = RestClassModel.__dict__['retrieve']
+        patching.patch()
+        wrapped_twice = RestClassModel.__dict__['retrieve']
+        assert wrapped_once is wrapped_twice, "handler was wrapped again on re-patch"
+
+    def test_access_still_correct_after_repeated_patching(self, db):
+        for _ in range(5):
+            patching.patch()
+        # No stacked wrappers -> normal allow/deny, not a 500 from too-deep checks.
+        # RestClassModel.retrieve is admin-only.
+        admin_user = User.objects.create(username='admin', is_superuser=True)
+        assert_allowed(admin_user, get=f'/users/{admin_user.id}/')
+        assert_disallowed(AnonymousUser(), get=f'/users/{admin_user.id}/')
