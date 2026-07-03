@@ -300,11 +300,3 @@ def iter_urlpatterns(urlpatterns):
         else:
             assert type(entity) == URLPattern, f"Expected pattern, got '{entity}'"
             yield entity
-
-
-def extract_views_from_urlpatterns(urlpatterns):
-    """
-    Similar to iter_urlpatterns but uses django-extensions' show_urls methodology
-    """
-    from django_extensions.management.commands.show_urls import Command
-    return Command().extract_views_from_urlpatterns(urlpatterns)
