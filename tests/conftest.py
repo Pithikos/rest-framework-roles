@@ -25,7 +25,6 @@ ROLES = {
     'test_user2': is_test_user2,
     'test_user3': is_test_user3,
 }
-VIEW_PERMISSIONS = []
 REST_FRAMEWORK_ROLES = {
   'ROLES': 'tests.conftest.ROLES',
 }
@@ -39,6 +38,48 @@ urlpatterns = []  # Used only to avoid errors before we override ROOT_URLCONF in
 def client():
     from rest_framework.test import APIClient
     return APIClient()
+
+
+@pytest.fixture
+def request_factory():
+    from django.test import RequestFactory
+    return RequestFactory()
+
+
+@pytest.fixture
+def anon(db):
+    from django.contrib.auth.models import AnonymousUser
+    return AnonymousUser()
+
+
+@pytest.fixture
+def user(db):
+    from django.contrib.auth.models import User
+    return User.objects.create(username='mruser')
+
+
+@pytest.fixture
+def admin(db):
+    from django.contrib.auth.models import User
+    return User.objects.create(username='mradmin', is_staff=True, is_superuser=True)
+
+
+@pytest.fixture
+def test_user1(db):
+    from django.contrib.auth.models import User
+    return User.objects.create(username='test_user1')
+
+
+@pytest.fixture
+def test_user2(db):
+    from django.contrib.auth.models import User
+    return User.objects.create(username='test_user2')
+
+
+@pytest.fixture
+def test_user3(db):
+    from django.contrib.auth.models import User
+    return User.objects.create(username='test_user3')
 
 
 def pytest_configure(config):
