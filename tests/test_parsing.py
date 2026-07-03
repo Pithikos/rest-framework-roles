@@ -99,7 +99,7 @@ def test_parse_view_permissions():
 
 def test_rules_sorted_by_cost():
 
-    @role_checker(cose=5)
+    @role_checker(cost=5)
     def is_expensivo(*args):
         pass
 
