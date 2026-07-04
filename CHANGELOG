@@ -1,4 +1,4 @@
-1.2.0 (pre-release)
+1.2.0
 =====
 - Make patch() to be idempotent
 - Fix redirection false granting edge case: 2+ redirections would falsely grant due to caching, even if the 2nd handler in the chain would not grant
