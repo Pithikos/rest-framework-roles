@@ -40,7 +40,7 @@ urlpatterns = [
 @pytest.mark.urls(__name__)
 class TestUserAPI():
 
-    def setup(self):
+    def setup_method(self):
         patching.patch()
 
     def test_anyof(self, test_user1):

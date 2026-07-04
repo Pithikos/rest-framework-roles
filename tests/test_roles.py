@@ -45,7 +45,7 @@ urlpatterns = [
 @pytest.mark.urls(__name__)
 class TestRoleCheckers():
 
-    def setup(self):
+    def setup_method(self):
         self.is_admin = MagicMock()
         self.is_user = MagicMock()
         ROLES = {

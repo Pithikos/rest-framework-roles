@@ -55,7 +55,7 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     install_requires=INSTALL_REQUIRES,
-    python_requires='>=3',
+    python_requires='>=3.9',
     keywords=[
         'permissions',
         'roles',
@@ -70,6 +70,14 @@ setup(
     ],
     classifiers=[
         'Framework :: Django',
+        'Framework :: Django :: 4.2',
+        'Framework :: Django :: 5.2',
+        'Framework :: Django :: 6.0',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
         'Topic :: Security',
     ],
     cmdclass={

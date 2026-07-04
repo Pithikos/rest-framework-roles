@@ -175,7 +175,7 @@ urlpatterns = [path('', include(router.urls)),]
 @pytest.mark.urls(__name__)
 class TestUserAPI():
 
-    def setup(self):
+    def setup_method(self):
         patching.patch()
 
     def test_only_admin_can_list_users(self, user, anon, admin):
@@ -225,7 +225,7 @@ class TestUserAPI():
 
 @pytest.mark.urls(__name__)
 class TestLeastPrivilege():
-    def setup(self):
+    def setup_method(self):
         patching.patch()
 
     def test_missing_view_permission_yields_no_privilege(self, anon):
@@ -266,7 +266,7 @@ TEST_CASES = [
 
 @pytest.mark.urls(__name__)
 class TestAccess():
-    def setup(self):
+    def setup_method(self):
         patching.patch()
 
     @pytest.mark.parametrize("url,usertype,expected_status", TEST_CASES)
@@ -295,7 +295,7 @@ class TestViewRedirection():
     """
     Ensure a redirection does not introduce a security hole
     """
-    def setup(self):
+    def setup_method(self):
         patching.patch()
 
     def test_restrictive_listing(self, user, anon, admin):
@@ -358,7 +358,7 @@ class TestRedirectionRechecksEachHandler:
     REGRESSION TEST: Ensure that a redirection does not allow a grant to be used
     for another handler.
     """
-    def setup(self):
+    def setup_method(self):
         patching.patch()
 
     @pytest.mark.parametrize("entry_grants, redirect_grants, allowed", [
