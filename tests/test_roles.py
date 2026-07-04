@@ -11,8 +11,7 @@ from rest_framework_roles.exceptions import Misconfigured
 from rest_framework_roles.roles import is_admin, is_user, is_anon
 from rest_framework_roles.granting import is_self, anyof, allof
 from rest_framework_roles import patching
-from .fixtures import admin, user, anon
-import utils
+from . import utils
 
 
 # -------------------------------- Recipe ---------------------------------
@@ -46,7 +45,7 @@ urlpatterns = [
 @pytest.mark.urls(__name__)
 class TestRoleCheckers():
 
-    def setup(self):
+    def setup_method(self):
         self.is_admin = MagicMock()
         self.is_user = MagicMock()
         ROLES = {

@@ -11,7 +11,6 @@ from rest_framework_roles import patching
 
 MAX_VIEW_REDIRECTION_DEPTH = 3  # Disallow too much depth since it can potentially become expensive
 
-PERMISSIONS_GRANTED_ATTR = "_rfr_permissions_granted"
 VIEWS_CHECKED_ATTR = "_rfr_views_checked"
 
 logger = logging.getLogger(__name__)
@@ -55,9 +54,6 @@ def _check_role_permissions(request, view, view_instance, view_permissions):
                     raise Misconfigured("From v0.4.0+ you need to use 'anyof', 'allof' or similar for multiple grant checks")
 
                 if granted:
-                    permissions_granted = getattr(request, PERMISSIONS_GRANTED_ATTR, set())
-                    permissions_granted.add(view_permissions)
-                    setattr(request, PERMISSIONS_GRANTED_ATTR, permissions_granted)
                     return granted
 
 
@@ -85,11 +81,6 @@ def check_role_permissions(request, view, view_instance, view_permissions):
     setattr(request, VIEWS_CHECKED_ATTR, views_checked)
     if len(views_checked) > MAX_VIEW_REDIRECTION_DEPTH:
         raise Exception(f"Permissions checked too many times for same request: {request}")
-
-    # OPTIMIZATION: Avoid double-checking the same permissions twice
-    permissions_granted = getattr(request, PERMISSIONS_GRANTED_ATTR, None)
-    if permissions_granted and view_permissions in permissions_granted:
-        return True
 
     logger.debug(f'Check permissions for {request}..')
 

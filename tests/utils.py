@@ -2,7 +2,7 @@ import inspect
 
 from django.contrib.auth.models import User
 from django.http import HttpResponse
-from rest_framework import serializers, permissions, viewsets
+from rest_framework import serializers
 from rest_framework.test import APIClient
 _client = APIClient()
 
@@ -44,24 +44,16 @@ def assert_disallowed(user, get=None, post=None, patch=None, data=None, expected
         raise AssertionError(f"'{user}' should not be allowed. Got {response.status_code} - '{response.content.decode()}'")
 
 
-def is_preview_patched(fn):
-    return 'wrapped_view' in str(fn)
+def is_patched(fn):
+    """Check if handler has been patched"""
+    return getattr(fn, '_rfr_wrapped', False)
 
 
 def has_view_permissions(fn):
     return hasattr(fn, 'view_permissions')
 
 
-# ------------------------------------------------------------------------------
-
-
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = '__all__'
-
-
-class BaseUserViewSet(viewsets.ModelViewSet):
-    serializer_class = UserSerializer
-    permission_classes = (permissions.IsAdminUser,)
-    queryset = User.objects.all()

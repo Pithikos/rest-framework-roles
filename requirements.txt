@@ -1,9 +1,9 @@
-Django==4.2.30
+Django==4.2.22
 djangorestframework==3.14.0
 
 # Dev
-pytest==7.2.0
-pytest-django==4.5.2
-pytest-forked==1.4.0
-pytest-xdist==3.0.2  # required for sandboxing each test
+tox>=4.11             # runs the full Django/Python matrix (see tox.ini)
+pytest==8.3.4
+pytest-django==4.9.0
+pytest-xdist==3.6.1   # required for sandboxing each test
 twine==5.1.1

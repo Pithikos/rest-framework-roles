@@ -1,38 +1,37 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@0.2.1
-
 
 jobs:
   test:
-    executor: python/default
+    parameters:
+      python-version:
+        type: string
+    docker:
+      - image: cimg/python:<< parameters.python-version >>
     steps:
       - checkout
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
       - run:
-          name: Test
-          command: |
-            python -m pytest
-      - store_artifacts:
-          path: test-reports
-          destination: test-reports
+          name: Install tox
+          command: pip install tox
+      - run:
+          name: Run test matrix for this interpreter
+          # Derive the tox factor from the image's Python version, e.g. 3.12 -> py312.
+          # tox then runs every Django env compatible with this interpreter.
+          command: tox -f "py$(echo '<< parameters.python-version >>' | tr -d '.')"
+
   deploy:
-    executor: python/default
+    docker:
+      - image: cimg/python:3.12
     steps:
       - checkout
-      - python/load-cache
       - run:
           name: verify git tag vs. version
-          command: |
-            python setup.py verify
+          command: python setup.py verify
       - run:
           name: create packages
           command: |
-            python setup.py sdist
-            python setup.py bdist_wheel
+            pip install build twine
+            python -m build
       - run:
           name: setup pypi credentials
           command: |
@@ -47,16 +46,24 @@ jobs:
               python -m twine upload dist/*
             fi
 
+
 workflows:
   test:
     jobs:
       - test:
+          matrix:
+            parameters:
+              python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
           filters:
             branches:
               only: development
+
   new_release:
     jobs:
       - test:
+          matrix:
+            parameters:
+              python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
           filters:
             branches:
               only: master
@@ -64,4 +71,13 @@ workflows:
               only: /v[0-9]+(\.[0-9]+)*/
       - deploy:
           requires:
-            - test
+            - test-3.9
+            - test-3.10
+            - test-3.11
+            - test-3.12
+            - test-3.13
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*/

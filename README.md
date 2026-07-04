@@ -131,7 +131,7 @@ Explanation:
 3. `GET /users/` should only be accessible to admin. 404 is not required since there's not any special information, so a simple 401 is more informative to requests.
 4. `GET /users/me/` is a redirection to `GET /users/<id>/`. We know the latter already uses `is_self` which is correct. However for a better experience we return a 401 for anonymous requests here instead of the default 404.
 
-> Redirections are supported and have minimal performance impact. You still need to explicitly state access to them in `view_permissions` or you'll get the exception from `DEFAULT_EXCEPTION_CLASS`.
+> Redirections are supported and must all be defined in `view_permissions`. The handlers are all checked in sequence and all must grant access for the request to be allowed.
 
 > The granting algorithm is **greedy**. If a request matches multiple roles, it will go through all of the roles until it reaches one that grants it access. This allows flexibility in case you have several overlapping roles (e.g. admin is also a user and staff).
 

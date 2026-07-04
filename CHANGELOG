@@ -1,3 +1,8 @@
+1.2.0
+=====
+- Make patch() to be idempotent
+- Fix redirection false granting edge case: 2+ redirections would falsely grant due to caching, even if the 2nd handler in the chain would not grant
+
 1.1.0
 =====
 - Add setting `REST_FRAMEWORK_ROLES.DEFAULT_EXCEPTION_CLASS`

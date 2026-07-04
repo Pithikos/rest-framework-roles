@@ -10,7 +10,7 @@ from django.http import HttpResponse
 
 # from .urls import *
 from rest_framework_roles import patching
-from ..utils import _func_name, is_preview_patched
+from ..utils import _func_name, is_patched
 
 
 # -------------------------------- Setup app -----------------------------------
@@ -49,11 +49,12 @@ def django_resolver():
 
 @pytest.mark.urls(__name__)
 def test_patching_instance_views(django_resolver, client):
-    # Class methods should NEVER be patched due to different classes sharing inherited mixins
+    # Handlers listed in view_permissions get wrapped on the concrete class;
+    # handlers not mentioned there are left untouched.
     match = django_resolver.resolve('/django_class_view')
     cls = match.func.view_class
-    assert not is_preview_patched(cls.get)
-    assert not is_preview_patched(cls.view_unpatched)
+    assert is_patched(cls.get)                  # 'get' is in view_permissions
+    assert not is_patched(cls.view_unpatched)   # not listed -> untouched
 
     # Ensure check_role_permissions called
     from rest_framework_roles.patching import DEFAULT_EXCEPTION_CLASS

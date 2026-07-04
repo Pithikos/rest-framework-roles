@@ -34,8 +34,12 @@ DEFAULT_SKIP_MODULES = {
     "django.*"
 }
 
-
-DEFAULT_EXCEPTION_CLASS = "rest_framework.exceptions.PermissionDenied"
+# The default exception raised when access is denied.
+#
+# NOTE: To avoid issues with multiple calls to patch() in i.e. testing,
+# we resolve the exception class from the dotted path at runtime.
+DEFAULT_EXCEPTION_CLASS_PATH = "rest_framework.exceptions.PermissionDenied"
+DEFAULT_EXCEPTION_CLASS = None
 
 
 class DefaultPermission(BasePermission):
@@ -87,7 +91,8 @@ def _rfr_wrap_handler(handler, handler_permissions):
             raise DEFAULT_EXCEPTION_CLASS
 
         return handler(self, request, *args, **kwargs)
-    
+
+    _rfr_wrapped_handler._rfr_wrapped = True
     return _rfr_wrapped_handler
 
 
@@ -103,12 +108,9 @@ def _rfr_wrap_check_permissions(original_check_permissions):
             Determine if request handler is mentioned in view_permissions
             """
 
+            # NOTE: For wrapped handlers, functools.wraps preserves __name__,
+            # so an explicitly-protected handler is always matched here.
             if handler.__name__ in self._view_permissions:
-                return True
-
-            if handler.__qualname__.endswith("._rfr_wrapped_handler"): # TRUE
-                # If we have wrapped the handler, it means that it was due
-                # to being explicitly mentioned in view_permissions
                 return True
 
             if getattr(self, "action", None):
@@ -132,6 +134,7 @@ def _rfr_wrap_check_permissions(original_check_permissions):
             logger.warning(f"{self.__class__.__name__}: Handler '{handler.__name__}' fired but no explicit permission found in 'view_permissions' for this handler. Denying access")
             raise DEFAULT_EXCEPTION_CLASS
 
+    _rfr_wrapped_check_permissions._rfr_wrapped = True
     return _rfr_wrapped_check_permissions
 
 
@@ -166,16 +169,14 @@ def get_view_class(callback):
     return cls
 
 
-def post_patch():
-
-    # Parse DEFAULT_EXCEPTION_CLASS
+def resolve_denial_exception_class():
     global DEFAULT_EXCEPTION_CLASS
     from django.conf import settings
-    DEFAULT_EXCEPTION_CLASS = settings.REST_FRAMEWORK_ROLES.get("DEFAULT_EXCEPTION_CLASS", DEFAULT_EXCEPTION_CLASS)
-    if not isinstance(DEFAULT_EXCEPTION_CLASS, str):
+    path = settings.REST_FRAMEWORK_ROLES.get("DEFAULT_EXCEPTION_CLASS", DEFAULT_EXCEPTION_CLASS_PATH)
+    if not isinstance(path, str):
         raise Misconfigured("DEFAULT_EXCEPTION_CLASS must be a string")
     try:
-        exc_class = import_string(DEFAULT_EXCEPTION_CLASS)
+        exc_class = import_string(path)
     except ImportError as e:
         raise Misconfigured(f"DEFAULT_EXCEPTION_CLASS contains invalid 'NOT_GRANTED_EXCEPTION': {e}")
     if not issubclass(exc_class, Exception):
@@ -214,6 +215,8 @@ def patch(urlconf=None, roleconfig=None):
     from rest_framework.settings import api_settings  # noqa
     api_settings.DEFAULT_PERMISSION_CLASSES = [DefaultPermission]
 
+    resolve_denial_exception_class()
+
     patterns = get_urlpatterns(urlconf)
 
     if not patterns:
@@ -222,7 +225,7 @@ def patch(urlconf=None, roleconfig=None):
     # Collect classes since multiple patterns might use the same view class
     collected_classes = set()
     for pattern in patterns:
-        
+
         # Skip patching 3rd party entities (e.g. django.contrib.admin)
         skip = False
         for modpattern in SKIP_MODULES:
@@ -251,25 +254,29 @@ def patch(urlconf=None, roleconfig=None):
         permission_classes = getattr(cls, "permission_classes", None)
         if permission_classes and permission_classes != api_settings.DEFAULT_PERMISSION_CLASSES:
             raise Misconfigured(f"{cls.__name__}: You can't use both 'permission_classes' and 'view_permissions' in the same class")
-        
+
         # Parse permissions for direct lookup
         cls._view_permissions = parse_view_permissions(cls.view_permissions, roleconfig)
-        
+
         # Wrap mentioned request handler in view_permissions.
         for handler_name, handler_permissions in cls._view_permissions.items():
             if hasattr(cls, handler_name):
                 handler_permissions = cls._view_permissions[handler_name]
+                # Skip if this class already carries our wrapper, so that calling
+                # patch() more than once doesn't stack wrappers on top of wrappers.
+                if getattr(cls.__dict__.get(handler_name), "_rfr_wrapped", False):
+                    continue
                 old_handler = getattr(cls, handler_name)
                 new_handler = _rfr_wrap_handler(old_handler, handler_permissions)
                 setattr(cls, handler_name, new_handler)
             else:
                 raise Misconfigured(f"Unknown method '{handler_name}' found in {cls.__name__}.view_permissions")
 
-        # Wrap DRF's check_permissions
+        # Wrap DRF's check_permissions (idempotently)
         if hasattr(cls, "check_permissions"):
-            cls.check_permissions = _rfr_wrap_check_permissions(cls.check_permissions)
+            if not getattr(cls.__dict__.get("check_permissions"), "_rfr_wrapped", False):
+                cls.check_permissions = _rfr_wrap_check_permissions(cls.check_permissions)
 
-    post_patch()
     return patch_classes
 
 
@@ -290,11 +297,3 @@ def iter_urlpatterns(urlpatterns):
         else:
             assert type(entity) == URLPattern, f"Expected pattern, got '{entity}'"
             yield entity
-
-
-def extract_views_from_urlpatterns(urlpatterns):
-    """
-    Similar to iter_urlpatterns but uses django-extensions' show_urls methodology
-    """
-    from django_extensions.management.commands.show_urls import Command
-    return Command().extract_views_from_urlpatterns(urlpatterns)

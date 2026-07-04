@@ -4,7 +4,6 @@ from django.contrib.auth.models import User
 
 from rest_framework_roles.granting import is_self, anyof, allof
 from rest_framework_roles import patching
-from .fixtures import anon, user, admin, test_user1, test_user2, test_user3
 from .utils import assert_allowed, assert_disallowed, UserSerializer
 
 
@@ -41,7 +40,7 @@ urlpatterns = [
 @pytest.mark.urls(__name__)
 class TestUserAPI():
 
-    def setup(self):
+    def setup_method(self):
         patching.patch()
 
     def test_anyof(self, test_user1):

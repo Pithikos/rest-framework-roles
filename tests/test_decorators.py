@@ -42,3 +42,10 @@ class TestRoleCheckerDecorators:
             # assert
         assert is_owner.cost == expensive_cost
         assert is_cheapo.cost == cheap_cost
+
+    def test_unknown_kwarg_raises(self):
+        # A typo like `cost` -> `cose` must fail loudly.
+        with pytest.raises(TypeError):
+            @role_checker(cose=5)
+            def is_typo():
+                pass
