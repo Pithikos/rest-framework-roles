@@ -135,12 +135,37 @@ class WithCustomPermissionClassesAllowAny(drf.viewsets.ModelViewSet):
     permission_classes = [drf.permissions.AllowAny]
 
 
+class AccountViewSet(drf.viewsets.ModelViewSet):
+    """
+    An account API where you may only read your OWN account - directly via
+    `retrieve`, or through the `redirect` action that forwards to `retrieve`
+    for whichever account `?to=` points at.
+
+    This is a demonstration only for worst case scenario that most probably
+    won't happen in real life.
+    """
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    view_permissions = {
+        'retrieve': {'user': is_self},
+        'redirect': {'user': is_self},
+    }
+
+    @drf.decorators.action(detail=True)
+    def redirect(self, request, pk=None):
+        # Redirect to another account's retrieve view.
+        # /accounts/<pk>/redirect/?to=<other_pk>  ->  retrieve(<other_pk>)
+        self.kwargs['pk'] = request.query_params['to']
+        return self.retrieve(request)
+
+
 router = drf.routers.DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'no_custom_permission_classes_no_view_permissions', NoViewPermissionsNoPermissionClasses, basename='no_custom_permission_classes_no_view_permissions')
 router.register(r'with_custom_permission_classes_allowany', WithCustomPermissionClassesAllowAny, basename='with_custom_permission_classes_allowany')
 router.register(r'only_admin_list', RestrictedListViewSet, basename='only_admin_list')
 router.register(r'anyone_list', PermissiveListViewSet, basename='anyone_list')
+router.register(r'accounts', AccountViewSet, basename='account')
 urlpatterns = [path('', include(router.urls)),]
 
 
@@ -272,7 +297,7 @@ class TestViewRedirection():
     """
     def setup(self):
         patching.patch()
-    
+
     def test_restrictive_listing(self, user, anon, admin):
         """
         Ensure if 2 views used, the leasy privilege is in effect
@@ -328,20 +353,26 @@ class TestWithCustomPermissionClassesAndViewPermissions:
 
 
 @pytest.mark.urls(__name__)
-class TestGroupedPermissions:
+class TestRedirectionRechecksEachHandler:
+    """
+    REGRESSION TEST: Ensure that a redirection does not allow a grant to be used
+    for another handler.
+    """
     def setup(self):
         patching.patch()
 
-    def test_check_role_permissions_not_doublecalling(self, admin, user, anon):
-
-        from rest_framework_roles.permissions import check_role_permissions as og_check_role_permissions
-        from rest_framework_roles.permissions import _check_role_permissions as _og_check_role_permissions
-        with patch('rest_framework_roles.permissions.check_role_permissions', wraps=og_check_role_permissions) as mocked_check_role_permissions:
-            with patch('rest_framework_roles.permissions._check_role_permissions', wraps=_og_check_role_permissions) as _mocked_check_role_permissions:
-                assert_allowed(user, patch=f'/users/{user.id}/', data={'username': 'newusername'})
-
-        # check_permissions called twice due to the default update_partial -> update redirection
-        assert mocked_check_role_permissions.call_count == 2
-
-        # BUT the 3nd time we expect the checking to have been bypassed
-        assert _mocked_check_role_permissions.call_count == 1
+    @pytest.mark.parametrize("entry_grants, redirect_grants, allowed", [
+        # entry handler grants?, redirected-to handler grants?, expected access
+        (True,  True,  True),    # my own account       -> my own account
+        (True,  False, False),   # my own account       -> someone else's  (stay denied)
+        (False, True,  False),   # someone else's account (denied before we even redirect)
+    ])
+    def test_each_handler_is_enforced(self, user, entry_grants, redirect_grants, allowed):
+        other = User.objects.create(username='other')
+        entry_pk = user.id if entry_grants else other.id
+        target_pk = user.id if redirect_grants else other.id
+        url = f'/accounts/{entry_pk}/redirect/?to={target_pk}'
+        if allowed:
+            assert_allowed(user, get=url)
+        else:
+            assert_disallowed(user, get=url)
