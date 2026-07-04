@@ -108,12 +108,9 @@ def _rfr_wrap_check_permissions(original_check_permissions):
             Determine if request handler is mentioned in view_permissions
             """
 
+            # NOTE: For wrapped handlers, functools.wraps preserves __name__,
+            # so an explicitly-protected handler is always matched here.
             if handler.__name__ in self._view_permissions:
-                return True
-
-            if handler.__qualname__.endswith("._rfr_wrapped_handler"): # TRUE
-                # If we have wrapped the handler, it means that it was due
-                # to being explicitly mentioned in view_permissions
                 return True
 
             if getattr(self, "action", None):
