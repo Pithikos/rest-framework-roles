@@ -1,5 +1,5 @@
 Django==4.2.22
-djangorestframework==3.14.0
+djangorestframework==3.17.2
 
 # Dev
 tox>=4.11             # runs the full Django/Python matrix (see tox.ini)
